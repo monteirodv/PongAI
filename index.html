@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pong com IA Aprimorada</title>
+    <!-- Importando a biblioteca TensorFlow.js para a IA -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
     <style>
+        /* Estilo geral da página */
         body {
             background: #1a1a2e;
             color: #fff;
@@ -17,14 +19,17 @@
             margin: 0;
             overflow: hidden;
         }
+        /* Estilo do container do jogo */
         #game {
             display: flex;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
+        /* Estilo do canvas do jogo */
         canvas {
             border: 2px solid #16213e;
             border-radius: 8px;
         }
+        /* Estilo do painel de informações da IA */
         #ai-info {
             width: 400px;
             height: 600px;
@@ -35,10 +40,12 @@
             display: flex;
             flex-direction: column;
         }
+        /* Estilos para controles, informações e placar */
         #controls, #info, #score {
             margin-top: 10px;
             text-align: center;
         }
+        /* Estilo dos botões */
         button {
             background: #0f3460;
             border: none;
@@ -54,6 +61,7 @@
         button:hover {
             background: #e94560;
         }
+        /* Estilo da visualização da rede neural */
         #network-vis {
             width: 100%;
             height: calc(100% - 150px);
@@ -61,6 +69,7 @@
             border-radius: 5px;
             margin-top: 10px;
         }
+        /* Estilo das estatísticas da IA */
         #stats {
             display: flex;
             flex-wrap: wrap;
@@ -82,6 +91,7 @@
             margin-top: 0;
             text-align: center;
         }
+        /* Estilo do menu de dificuldade */
         #menu {
             position: absolute;
             top: 50%;
@@ -97,6 +107,7 @@
             width: 100%;
             margin-top: 10px;
         }
+        /* Estilo da assinatura do criador */
         #made-by {
             position: absolute;
             bottom: 10px;
@@ -107,33 +118,46 @@
     </style>
 </head>
 <body>
+    <!-- Container principal do jogo -->
     <div id="game">
         <div>
+            <!-- Canvas onde o jogo será renderizado -->
             <canvas id="pong" width="800" height="600"></canvas>
+            <!-- Placar do jogo -->
             <div id="score">Jogador: <span id="player-score">0</span> | IA: <span id="ai-score">0</span></div>
+            <!-- Informação sobre a velocidade da bola -->
             <div id="info">Velocidade da Bola: <span id="ball-speed">0</span></div>
+            <!-- Controles do jogo -->
             <div id="controls">
                 <button id="start">Iniciar</button>
                 <button id="pause">Pausar</button>
                 <button id="reset">Reiniciar</button>
             </div>
         </div>
+        <!-- Painel de informações da IA -->
         <div id="ai-info">
             <h3>Visualização da Rede Neural da IA</h3>
+            <!-- Canvas para visualização da rede neural -->
             <canvas id="network-vis" width="400" height="450"></canvas>
+            <!-- Container para estatísticas da IA -->
             <div id="stats"></div>
         </div>
     </div>
+    <!-- Menu de seleção de dificuldade -->
     <div id="menu">
         <h2>Pong com IA</h2>
         <button id="easy">Fácil</button>
         <button id="medium">Médio</button>
         <button id="hard">Difícil</button>
     </div>
+    <!-- Assinatura do criador -->
     <div id="made-by">Feito com &lt;3 por Daniel M</div>
     <script>
+        // Obtendo referências para elementos do DOM
         const canvas = document.getElementById("pong");
         const ctx = canvas.getContext("2d");
+
+        // Definindo constantes do jogo
         const paddleHeight = 150;
         const paddleWidth = 15;
         const ballRadius = 10;
@@ -142,6 +166,7 @@
         const batchSize = 32;
         const trainingInterval = 5;
 
+        // Variáveis de estado do jogo
         let playerY, aiY, ballX, ballY, ballSpeedX, ballSpeedY;
         let playerScore = 0, aiScore = 0;
         let isPlaying = false;
@@ -158,6 +183,7 @@
         let initialBallSpeed = 5;
         let difficulty = 1;
 
+        // Funções auxiliares para desenho
         const drawRect = (x, y, w, h) => ctx.fillRect(x, y, w, h);
         const drawCircle = (x, y, r) => {
             ctx.beginPath();
@@ -165,12 +191,14 @@
             ctx.fill();
         };
 
+        // Criação do modelo de IA usando TensorFlow.js
         const model = tf.sequential();
         model.add(tf.layers.dense({ units: 16, activation: "relu", inputShape: [4] }));
         model.add(tf.layers.dense({ units: 8, activation: "relu" }));
         model.add(tf.layers.dense({ units: 1, activation: "tanh" }));
         model.compile({ loss: "meanSquaredError", optimizer: tf.train.adam(learningRate) });
 
+        // Função para prever o movimento da IA
         const predictAiMove = async () => {
             const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, aiY / canvas.height]]);
             const prediction = await model.predict(input).data();
@@ -182,6 +210,7 @@
             drawNetwork();
         };
 
+        // Função para coletar dados de treinamento
         const collectTrainingData = () => {
             const input = [ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, aiY / canvas.height];
             const label = [(ballY - (aiY + paddleHeight / 2)) / (canvas.height / 2)];
@@ -190,6 +219,7 @@
             updateStats();
         };
 
+        // Função para treinar o modelo
         const trainModel = async () => {
             if (trainingData.length < batchSize) return;
             const inputs = tf.tensor2d(trainingData.map(d => d.input));
@@ -204,13 +234,16 @@
             drawNetwork();
         };
 
+        // Função principal de atualização do jogo
         const update = () => {
             if (isPlaying) {
+                // Atualiza a posição da bola
                 ballX += ballSpeedX;
                 ballY += ballSpeedY;
                 ballSpeedX *= 1.0001;
                 ballSpeedY *= 1.0001;
 
+                // Verifica colisões com as bordas superior e inferior
                 const hitTop = ballY < 0;
                 const hitBottom = ballY > canvas.height;
                 if (hitTop || hitBottom) {
@@ -218,6 +251,7 @@
                     ballY = hitTop ? 0 : canvas.height;
                 }
 
+                // Verifica colisão com a raquete do jogador
                 if (ballX < paddleWidth && ballY > playerY && ballY < playerY + paddleHeight) {
                     ballSpeedX = -ballSpeedX;
                     ballSpeedY += ((ballY - (playerY + paddleHeight / 2)) / (paddleHeight / 2)) * paddleSpeed * 0.25;
@@ -227,6 +261,7 @@
                     updateScore();
                 }
 
+                // Verifica colisão com a raquete da IA
                 if (ballX > canvas.width - paddleWidth && ballY > aiY && ballY < aiY + paddleHeight) {
                     ballSpeedX = -ballSpeedX;
                     ballSpeedY += ((ballY - (aiY + paddleHeight / 2)) / (paddleHeight / 2)) * paddleSpeed * 0.25;
@@ -236,6 +271,7 @@
                     updateScore();
                 }
 
+                // Atualiza a IA e coleta dados de treinamento
                 predictAiMove();
                 collectTrainingData();
                 if (++frameCount % trainingInterval === 0) trainModel();
@@ -243,6 +279,7 @@
                 draw();
             }
 
+            // Verifica se o jogo acabou
             if (playerScore >= winningScore || aiScore >= winningScore) {
                 endGame();
                 alert(`Fim de jogo! ${playerScore >= winningScore ? "Você venceu!" : "A IA venceu!"}`);
@@ -251,6 +288,7 @@
             }
         };
 
+        // Função para resetar a bola
         const resetBall = () => {
             ballX = canvas.width / 2;
             ballY = canvas.height / 2;
@@ -258,11 +296,13 @@
             ballSpeedY = initialBallSpeed * (Math.random() > 0.5 ? 1 : -1);
         };
 
+        // Função para atualizar o placar
         const updateScore = () => {
             document.getElementById("player-score").textContent = playerScore;
             document.getElementById("ai-score").textContent = aiScore;
         };
 
+        // Função para desenhar o jogo
         const draw = () => {
             ctx.fillStyle = "#1a1a2e";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -278,16 +318,19 @@
             }
         };
 
+        // Função para iniciar o jogo
         const startGame = () => {
             isPlaying = true;
             update();
         };
 
+        // Função para atualizar a velocidade da bola
         const updateBallSpeed = () => {
             let speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
             document.getElementById("ball-speed").textContent = speed.toFixed(2);
         };
 
+        // Função para inicializar o jogo
         const initGame = () => {
             playerY = aiY = (canvas.height - paddleHeight) / 2;
             resetBall();
@@ -298,6 +341,7 @@
             drawNetwork();
         };
 
+        // Função para desenhar a visualização da rede neural
         const drawNetwork = () => {
             const networkCanvas = document.getElementById("network-vis");
             const netCtx = networkCanvas.getContext("2d");
@@ -354,11 +398,12 @@
             netCtx.fillText("Movimento", layerPositions[3] + 10, networkCanvas.height / 2);
         };
 
+        // Função para atualizar as estatísticas da IA
         const updateStats = () => {
             const statsDiv = document.getElementById("stats");
             const stats = [
                 ["Previsão", aiPrediction.toFixed(2), -1, 1],
-				["Confiança", aiConfidence.toFixed(2), 0, 1],
+                ["Confiança", aiConfidence.toFixed(2), 0, 1],
                 ["Taxa de Aprendizado", learningRate.toFixed(4), 0, 0.01],
                 ["Rodadas de Treino", trainingRounds.toString(), 0, 1000],
                 ["Perda da Rede", networkLoss ? networkLoss.toFixed(4) : "N/A", 0, 1],
@@ -366,6 +411,7 @@
                 ["Melhoria da IA", aiImprovement.toFixed(2) + "%", 0, 100]
             ];
 
+            // Gera o HTML para exibir as estatísticas
             statsDiv.innerHTML = stats.map(stat => `
                 <div class="ai-info">
                     <span>${stat[0]}: ${stat[1]}</span>
@@ -374,12 +420,14 @@
             `).join("");
         };
 
+        // Função para encerrar o jogo
         const endGame = () => {
             isPlaying = false;
             cancelAnimationFrame(animationId);
             document.getElementById("menu").style.display = "block";
         };
 
+        // Função para definir a dificuldade do jogo
         const setDifficulty = (level) => {
             difficulty = level;
             initialBallSpeed = 5 * level;
@@ -390,12 +438,14 @@
             startGame();
         };
 
+        // Event listener para controlar a raquete do jogador com o mouse
         canvas.addEventListener("mousemove", (e) => {
             const rect = canvas.getBoundingClientRect();
             playerY = e.clientY - rect.top - paddleHeight / 2;
             playerY = Math.max(0, Math.min(canvas.height - paddleHeight, playerY));
         });
 
+        // Event listeners para os botões de controle
         document.getElementById("start").addEventListener("click", startGame);
         document.getElementById("pause").addEventListener("click", () => {
             isPlaying = false;
@@ -412,10 +462,12 @@
             initGame();
         });
 
+        // Event listeners para os botões de dificuldade
         document.getElementById("easy").addEventListener("click", () => setDifficulty(0.5));
         document.getElementById("medium").addEventListener("click", () => setDifficulty(1));
         document.getElementById("hard").addEventListener("click", () => setDifficulty(1.5));
 
+        // Inicializa o jogo
         initGame();
     </script>
 </body>

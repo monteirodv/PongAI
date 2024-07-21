@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Pong com IA Aprimorada</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong with TensorFlow.js AI</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
     <style>
         body {
@@ -82,21 +82,6 @@
             margin-top: 0;
             text-align: center;
         }
-        #menu {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #16213e;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        #menu button {
-            display: block;
-            width: 100%;
-            margin-top: 10px;
-        }
         #made-by {
             position: absolute;
             bottom: 10px;
@@ -110,53 +95,38 @@
     <div id="game">
         <div>
             <canvas id="pong" width="800" height="600"></canvas>
-            <div id="score">Jogador: <span id="player-score">0</span> | IA: <span id="ai-score">0</span></div>
-            <div id="info">Velocidade da Bola: <span id="ball-speed">0</span></div>
+            <div id="score">Player: <span id="player-score">0</span> | AI: <span id="ai-score">0</span></div>
+            <div id="info">Ball Speed: <span id="ball-speed">0</span></div>
             <div id="controls">
-                <button id="start">Iniciar</button>
-                <button id="pause">Pausar</button>
-                <button id="reset">Reiniciar</button>
+                <button id="start">Start</button>
+                <button id="pause">Pause</button>
+                <button id="reset">Reset</button>
             </div>
         </div>
         <div id="ai-info">
-            <h3>Visualização da Rede Neural da IA</h3>
+            <h3>AI Neural Network Visualization</h3>
             <canvas id="network-vis" width="400" height="450"></canvas>
             <div id="stats"></div>
         </div>
     </div>
-    <div id="menu">
-        <h2>Pong com IA</h2>
-        <button id="easy">Fácil</button>
-        <button id="medium">Médio</button>
-        <button id="hard">Difícil</button>
-    </div>
-    <div id="made-by">Feito com &lt;3 por Daniel M</div>
+    <div id="made-by">Made with &lt;3 by Your AI Assistant</div>
+
     <script>
         const canvas = document.getElementById("pong");
         const ctx = canvas.getContext("2d");
-        const paddleHeight = 150;
-        const paddleWidth = 15;
-        const ballRadius = 10;
-        const paddleSpeed = 15;
-        const maxBallSpeed = 30;
-        const batchSize = 32;
-        const trainingInterval = 5;
+        const paddleHeight = 100;
+        const paddleWidth = 10;
+        const ballRadius = 5;
+        const paddleSpeed = 5;
+        const maxBallSpeed = 15;
 
         let playerY, aiY, ballX, ballY, ballSpeedX, ballSpeedY;
         let playerScore = 0, aiScore = 0;
         let isPlaying = false;
         let animationId = null;
-        let frameCount = 0;
-        let trainingData = [];
         let aiPrediction = 0;
         let aiConfidence = 0;
-        let trainingRounds = 0;
         let networkLoss = 0;
-        let aiImprovement = 0;
-        let learningRate = 0.01;
-        let winningScore = 10;
-        let initialBallSpeed = 5;
-        let difficulty = 1;
 
         const drawRect = (x, y, w, h) => ctx.fillRect(x, y, w, h);
         const drawCircle = (x, y, r) => {
@@ -165,115 +135,101 @@
             ctx.fill();
         };
 
-        // Improved model architecture
+        // Create the model
         const model = tf.sequential();
-        model.add(tf.layers.dense({ units: 32, activation: "relu", inputShape: [5] }));
-        model.add(tf.layers.dense({ units: 16, activation: "relu" }));
-        model.add(tf.layers.dense({ units: 8, activation: "relu" }));
-        model.add(tf.layers.dense({ units: 1, activation: "tanh" }));
-        model.compile({ loss: "meanSquaredError", optimizer: tf.train.adam(learningRate) });
+        model.add(tf.layers.dense({ units: 16, activation: 'relu', inputShape: [3] }));
+        model.add(tf.layers.dense({ units: 8, activation: 'relu' }));
+        model.add(tf.layers.dense({ units: 1, activation: 'tanh' }));
+        model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
 
-        // Basic Pong strategy
-        const basicPongStrategy = (ballY, aiY) => {
-            const paddleCenter = aiY + paddleHeight / 2;
-            if (ballY > paddleCenter) {
-                return 1; // Move down
-            } else if (ballY < paddleCenter) {
-                return -1; // Move up
-            }
-            return 0; // Stay in place
+        // Initialize the model with some knowledge of Pong
+        const initializeModel = async () => {
+            const initialData = [
+                { input: [0.5, 0.5, 0], output: [0] },  // Ball in center, no movement
+                { input: [0.5, 0.25, -0.5], output: [-0.5] },  // Ball moving up, paddle should move up
+                { input: [0.5, 0.75, 0.5], output: [0.5] },  // Ball moving down, paddle should move down
+                { input: [0.25, 0.5, 0.5], output: [0] },  // Ball moving towards paddle, stay centered
+            ];
+
+            const xs = tf.tensor2d(initialData.map(d => d.input));
+            const ys = tf.tensor2d(initialData.map(d => d.output));
+
+            await model.fit(xs, ys, { epochs: 100, verbose: 0 });
+
+            xs.dispose();
+            ys.dispose();
         };
+
+        initializeModel();
 
         const predictAiMove = async () => {
-            const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, ballSpeedY / maxBallSpeed, aiY / canvas.height]]);
+            const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedY / maxBallSpeed]]);
             const prediction = await model.predict(input).data();
             aiPrediction = prediction[0];
-            
-            // Combine AI prediction with basic strategy
-            const basicMove = basicPongStrategy(ballY, aiY);
-            const combinedMove = (aiPrediction + basicMove) / 2;
-            
-            aiY += combinedMove * paddleSpeed * difficulty;
+            aiY += aiPrediction * paddleSpeed;
             aiY = Math.max(0, Math.min(canvas.height - paddleHeight, aiY));
             aiConfidence = Math.abs(aiPrediction);
+            input.dispose();
             updateStats();
             drawNetwork();
-        };
-
-        const collectTrainingData = () => {
-            const input = [ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, ballSpeedY / maxBallSpeed, aiY / canvas.height];
-            const label = [(ballY - (aiY + paddleHeight / 2)) / (canvas.height / 2)];
-            trainingData.push({ input, label });
-            if (trainingData.length > batchSize) trainingData.shift();
-            updateStats();
         };
 
         const trainModel = async () => {
-            if (trainingData.length < batchSize) return;
-            const inputs = tf.tensor2d(trainingData.map(d => d.input));
-            const labels = tf.tensor2d(trainingData.map(d => d.label));
-            const result = await model.fit(inputs, labels, { epochs: 5, batchSize: batchSize, shuffle: true });
-            inputs.dispose();
-            labels.dispose();
-            trainingRounds++;
+            const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedY / maxBallSpeed]]);
+            const label = tf.tensor2d([[(ballY - (aiY + paddleHeight / 2)) / (canvas.height / 2)]]);
+            
+            const result = await model.fit(input, label, { epochs: 1 });
             networkLoss = result.history.loss[0];
-            aiImprovement = Math.max(0, 100 * (1 - networkLoss / (aiImprovement || 1)));
+
+            input.dispose();
+            label.dispose();
             updateStats();
             drawNetwork();
         };
 
-        const update = () => {
+        const update = async () => {
             if (isPlaying) {
                 ballX += ballSpeedX;
                 ballY += ballSpeedY;
-                ballSpeedX *= 1.0001;
-                ballSpeedY *= 1.0001;
 
-                const hitTop = ballY < 0;
-                const hitBottom = ballY > canvas.height;
-                if (hitTop || hitBottom) {
+                if (ballY < 0 || ballY > canvas.height) {
                     ballSpeedY = -ballSpeedY;
-                    ballY = hitTop ? 0 : canvas.height;
                 }
 
                 if (ballX < paddleWidth && ballY > playerY && ballY < playerY + paddleHeight) {
                     ballSpeedX = -ballSpeedX;
-                    ballSpeedY += ((ballY - (playerY + paddleHeight / 2)) / (paddleHeight / 2)) * paddleSpeed * 0.25;
+                    const deltaY = ballY - (playerY + paddleHeight / 2);
+                    ballSpeedY += deltaY * 0.2;
                 } else if (ballX < 0) {
-                    resetBall();
                     aiScore++;
-                    updateScore();
+                    resetBall();
                 }
 
                 if (ballX > canvas.width - paddleWidth && ballY > aiY && ballY < aiY + paddleHeight) {
                     ballSpeedX = -ballSpeedX;
-                    ballSpeedY += ((ballY - (aiY + paddleHeight / 2)) / (paddleHeight / 2)) * paddleSpeed * 0.25;
+                    const deltaY = ballY - (aiY + paddleHeight / 2);
+                    ballSpeedY += deltaY * 0.2;
                 } else if (ballX > canvas.width) {
-                    resetBall();
                     playerScore++;
-                    updateScore();
+                    resetBall();
                 }
 
-                predictAiMove();
-                collectTrainingData();
-                if (++frameCount % trainingInterval === 0) trainModel();
+                await predictAiMove();
+                await trainModel();
+
                 updateBallSpeed();
+                updateScore();
                 draw();
             }
 
-            if (playerScore >= winningScore || aiScore >= winningScore) {
-                endGame();
-                alert(`Fim de jogo! ${playerScore >= winningScore ? "Você venceu!" : "A IA venceu!"}`);
-            } else {
-                animationId = requestAnimationFrame(update);
-            }
+            animationId = requestAnimationFrame(update);
         };
 
         const resetBall = () => {
             ballX = canvas.width / 2;
             ballY = canvas.height / 2;
-            ballSpeedX = initialBallSpeed * (Math.random() > 0.5 ? 1 : -1);
-            ballSpeedY = initialBallSpeed * (Math.random() > 0.5 ? 1 : -1);
+            ballSpeedX = 5 * (Math.random() > 0.5 ? 1 : -1);
+            ballSpeedY = 5 * (Math.random() > 0.5 ? 1 : -1);
         };
 
         const updateScore = () => {
@@ -292,7 +248,7 @@
             if (!isPlaying) {
                 ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
                 ctx.font = "30px Arial";
-                ctx.fillText("Pausado", canvas.width / 2 - 50, canvas.height / 2);
+                ctx.fillText("Paused", canvas.width / 2 - 50, canvas.height / 2);
             }
         };
 
@@ -324,18 +280,16 @@
 
             netCtx.clearRect(0, 0, networkCanvas.width, networkCanvas.height);
 
-            const layers = [5, 32, 16, 8, 1];
-            const layerPositions = [50, 150, 250, 350, 450];
-            const inputLabels = ["Bola X", "Bola Y", "Velocidade X", "Velocidade Y", "Raquete Y"];
-            const colors = ["#ffd700", "#87cefa", "#90ee90", "#ff6347", "#da70d6"];
+            const layers = [3, 16, 8, 1];
+            const layerPositions = [50, 150, 250, 350];
+            const inputLabels = ["Ball X", "Ball Y", "Ball Speed Y"];
+            const colors = ["#ffd700", "#87cefa", "#90ee90", "#ff6347"];
 
-            // Desenhar nós e conexões
             for (let i = 0; i < layers.length; i++) {
                 for (let j = 0; j < layers[i]; j++) {
                     const x = layerPositions[i];
                     const y = (networkCanvas.height / (layers[i] + 1)) * (j + 1);
                     
-                    // Desenhar conexões para a próxima camada
                     if (i < layers.length - 1) {
                         for (let k = 0; k < layers[i + 1]; k++) {
                             const endX = layerPositions[i + 1];
@@ -349,7 +303,6 @@
                         }
                     }
 
-                    // Desenhar nó
                     netCtx.fillStyle = colors[i];
                     netCtx.beginPath();
                     netCtx.arc(x, y, 5, 0, Math.PI * 2);
@@ -357,7 +310,6 @@
                 }
             }
 
-            // Desenhar rótulos de entrada
             netCtx.fillStyle = "#fff";
             netCtx.font = "12px Arial";
             netCtx.textAlign = "right";
@@ -367,21 +319,16 @@
                 netCtx.fillText(inputLabels[i], x, y + 3);
             }
 
-            // Desenhar rótulo de saída
             netCtx.textAlign = "left";
-            netCtx.fillText("Movimento", layerPositions[4] + 10, networkCanvas.height / 2);
+            netCtx.fillText("Movement", layerPositions[3] + 10, networkCanvas.height / 2);
         };
 
         const updateStats = () => {
             const statsDiv = document.getElementById("stats");
             const stats = [
-                ["Previsão", aiPrediction.toFixed(2), -1, 1],
-                ["Confiança", aiConfidence.toFixed(2), 0, 1],
-                ["Taxa de Aprendizado", learningRate.toFixed(4), 0, 0.01],
-                ["Rodadas de Treino", trainingRounds.toString(), 0, 1000],
-                ["Perda da Rede", networkLoss ? networkLoss.toFixed(4) : "N/A", 0, 1],
-                ["Pontos de Dados", trainingData.length.toString(), 0, batchSize],
-                ["Melhoria da IA", aiImprovement.toFixed(2) + "%", 0, 100]
+                ["Prediction", aiPrediction.toFixed(2), -1, 1],
+                ["Confidence", aiConfidence.toFixed(2), 0, 1],
+                ["Network Loss", networkLoss ? networkLoss.toFixed(4) : "N/A", 0, 1],
             ];
 
             statsDiv.innerHTML = stats.map(stat => `
@@ -390,22 +337,6 @@
                     <div class="bar" style="width: ${100 * Math.min(Math.max((parseFloat(stat[1]) - stat[2]) / (stat[3] - stat[2]), 0), 1)}%"></div>
                 </div>
             `).join("");
-        };
-
-        const endGame = () => {
-            isPlaying = false;
-            cancelAnimationFrame(animationId);
-            document.getElementById("menu").style.display = "block";
-        };
-
-        const setDifficulty = (level) => {
-            difficulty = level;
-            initialBallSpeed = 5 * level;
-            learningRate = 0.01 / level;
-            model.compile({ loss: "meanSquaredError", optimizer: tf.train.adam(learningRate) });
-            document.getElementById("menu").style.display = "none";
-            initGame();
-            startGame();
         };
 
         canvas.addEventListener("mousemove", (e) => {
@@ -421,18 +352,10 @@
             draw();
         });
         document.getElementById("reset").addEventListener("click", () => {
-            endGame();
+            cancelAnimationFrame(animationId);
             playerScore = aiScore = 0;
-            trainingData = [];
-            trainingRounds = 0;
-            networkLoss = 0;
-            aiImprovement = 0;
             initGame();
         });
-
-        document.getElementById("easy").addEventListener("click", () => setDifficulty(0.5));
-        document.getElementById("medium").addEventListener("click", () => setDifficulty(1));
-        document.getElementById("hard").addEventListener("click", () => setDifficulty(1.5));
 
         initGame();
     </script>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pong com IA Aprimorada</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
+    <style>
+        body {
+            background: #1a1a2e;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #game {
+            display: flex;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        canvas {
+            border: 2px solid #16213e;
+            border-radius: 8px;
+        }
+        #ai-info {
+            width: 400px;
+            height: 600px;
+            background: #16213e;
+            border-radius: 8px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        #controls, #info, #score {
+            margin-top: 10px;
+            text-align: center;
+        }
+        button {
+            background: #0f3460;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #e94560;
+        }
+        #network-vis {
+            width: 100%;
+            height: calc(100% - 150px);
+            background: #0f3460;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        #stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .ai-info {
+            width: 48%;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .bar {
+            height: 5px;
+            background: #e94560;
+            margin-top: 2px;
+            transition: width 0.3s ease-in-out;
+        }
+        h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+        #menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #16213e;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        #menu button {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #made-by {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #e94560;
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <div>
+            <canvas id="pong" width="800" height="600"></canvas>
+            <div id="score">Jogador: <span id="player-score">0</span> | IA: <span id="ai-score">0</span></div>
+            <div id="info">Velocidade da Bola: <span id="ball-speed">0</span></div>
+            <div id="controls">
+                <button id="start">Iniciar</button>
+                <button id="pause">Pausar</button>
+                <button id="reset">Reiniciar</button>
+            </div>
+        </div>
+        <div id="ai-info">
+            <h3>Visualização da Rede Neural da IA</h3>
+            <canvas id="network-vis" width="400" height="450"></canvas>
+            <div id="stats"></div>
+        </div>
+    </div>
+    <div id="menu">
+        <h2>Pong com IA</h2>
+        <button id="easy">Fácil</button>
+        <button id="medium">Médio</button>
+        <button id="hard">Difícil</button>
+    </div>
+    <div id="made-by">Feito com &lt;3 por Daniel M</div>
+    <script>
+        const canvas = document.getElementById("pong");
+        const ctx = canvas.getContext("2d");
+        const paddleHeight = 150;
+        const paddleWidth = 15;
+        const ballRadius = 10;
+        const paddleSpeed = 15;
+        const maxBallSpeed = 30;
+        const batchSize = 32;
+        const trainingInterval = 5;
+
+        let playerY, aiY, ballX, ballY, ballSpeedX, ballSpeedY;
+        let playerScore = 0, aiScore = 0;
+        let isPlaying = false;
+        let animationId = null;
+        let frameCount = 0;
+        let trainingData = [];
+        let aiPrediction = 0;
+        let aiConfidence = 0;
+        let trainingRounds = 0;
+        let networkLoss = 0;
+        let aiImprovement = 0;
+        let learningRate = 0.01;
+        let winningScore = 10;
+        let initialBallSpeed = 5;
+        let difficulty = 1;
+
+        const drawRect = (x, y, w, h) => ctx.fillRect(x, y, w, h);
+        const drawCircle = (x, y, r) => {
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        };
+
+        const model = tf.sequential();
+        model.add(tf.layers.dense({ units: 16, activation: "relu", inputShape: [4] }));
+        model.add(tf.layers.dense({ units: 8, activation: "relu" }));
+        model.add(tf.layers.dense({ units: 1, activation: "tanh" }));
+        model.compile({ loss: "meanSquaredError", optimizer: tf.train.adam(learningRate) });
+
+        const predictAiMove = async () => {
+            const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, aiY / canvas.height]]);
+            const prediction = await model.predict(input).data();
+            aiPrediction = prediction[0];
+            aiY += aiPrediction * paddleSpeed * difficulty;
+            aiY = Math.max(0, Math.min(canvas.height - paddleHeight, aiY));
+            aiConfidence = Math.abs(aiPrediction);
+            updateStats();
+            drawNetwork();
+        };
+
+        const collectTrainingData = () => {
+            const input = [ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, aiY / canvas.height];
+            const label = [(ballY - (aiY + paddleHeight / 2)) / (canvas.height / 2)];
+            trainingData.push({ input, label });
+            if (trainingData.length > batchSize) trainingData.shift();
+            updateStats();
+        };
+
+        const trainModel = async () => {
+            if (trainingData.length < batchSize) return;
+            const inputs = tf.tensor2d(trainingData.map(d => d.input));
+            const labels = tf.tensor2d(trainingData.map(d => d.label));
+            const result = await model.fit(inputs, labels, { epochs: 1, batchSize: batchSize, shuffle: true });
+            inputs.dispose();
+            labels.dispose();
+            trainingRounds++;
+            networkLoss = result.history.loss[0];
+            aiImprovement = Math.max(0, 100 * (1 - networkLoss / aiImprovement || 0));
+            updateStats();
+            drawNetwork();
+        };
+
+        const update = () => {
+            if (isPlaying) {
+                ballX += ballSpeedX;
+                ballY += ballSpeedY;
+                ballSpeedX *= 1.0001;
+                ballSpeedY *= 1.0001;
+
+                const hitTop = ballY < 0;
+                const hitBottom = ballY > canvas.height;
+                if (hitTop || hitBottom) {
+                    ballSpeedY = -ballSpeedY;
+                    ballY = hitTop ? 0 : canvas.height;
+                }
+
+                if (ballX < paddleWidth && ballY > playerY && ballY < playerY + paddleHeight) {
+                    ballSpeedX = -ballSpeedX;
+                    ballSpeedY += ((ballY - (playerY + paddleHeight / 2)) / (paddleHeight / 2)) * paddleSpeed * 0.25;
+                } else if (ballX < 0) {
+                    resetBall();
+                    aiScore++;
+                    updateScore();
+                }
+
+                if (ballX > canvas.width - paddleWidth && ballY > aiY && ballY < aiY + paddleHeight) {
+                    ballSpeedX = -ballSpeedX;
+                    ballSpeedY += ((ballY - (aiY + paddleHeight / 2)) / (paddleHeight / 2)) * paddleSpeed * 0.25;
+                } else if (ballX > canvas.width) {
+                    resetBall();
+                    playerScore++;
+                    updateScore();
+                }
+
+                predictAiMove();
+                collectTrainingData();
+                if (++frameCount % trainingInterval === 0) trainModel();
+                updateBallSpeed();
+                draw();
+            }
+
+            if (playerScore >= winningScore || aiScore >= winningScore) {
+                endGame();
+                alert(`Fim de jogo! ${playerScore >= winningScore ? "Você venceu!" : "A IA venceu!"}`);
+            } else {
+                animationId = requestAnimationFrame(update);
+            }
+        };
+
+        const resetBall = () => {
+            ballX = canvas.width / 2;
+            ballY = canvas.height / 2;
+            ballSpeedX = initialBallSpeed * (Math.random() > 0.5 ? 1 : -1);
+            ballSpeedY = initialBallSpeed * (Math.random() > 0.5 ? 1 : -1);
+        };
+
+        const updateScore = () => {
+            document.getElementById("player-score").textContent = playerScore;
+            document.getElementById("ai-score").textContent = aiScore;
+        };
+
+        const draw = () => {
+            ctx.fillStyle = "#1a1a2e";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#e94560";
+            drawRect(0, playerY, paddleWidth, paddleHeight);
+            drawRect(canvas.width - paddleWidth, aiY, paddleWidth, paddleHeight);
+            drawCircle(ballX, ballY, ballRadius);
+
+            if (!isPlaying) {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                ctx.font = "30px Arial";
+                ctx.fillText("Pausado", canvas.width / 2 - 50, canvas.height / 2);
+            }
+        };
+
+        const startGame = () => {
+            isPlaying = true;
+            update();
+        };
+
+        const updateBallSpeed = () => {
+            let speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
+            document.getElementById("ball-speed").textContent = speed.toFixed(2);
+        };
+
+        const initGame = () => {
+            playerY = aiY = (canvas.height - paddleHeight) / 2;
+            resetBall();
+            updateScore();
+            draw();
+            updateBallSpeed();
+            updateStats();
+            drawNetwork();
+        };
+
+        const drawNetwork = () => {
+            const networkCanvas = document.getElementById("network-vis");
+            const netCtx = networkCanvas.getContext("2d");
+            networkCanvas.width = 400;
+            networkCanvas.height = 450;
+
+            netCtx.clearRect(0, 0, networkCanvas.width, networkCanvas.height);
+
+            const layers = [4, 16, 8, 1];
+            const layerPositions = [50, 150, 250, 350];
+            const inputLabels = ["Bola X", "Bola Y", "Velocidade X da Bola", "Raquete Y da IA"];
+            const colors = ["#ffd700", "#87cefa", "#90ee90", "#ff6347"];
+
+            // Desenhar nós e conexões
+            for (let i = 0; i < layers.length; i++) {
+                for (let j = 0; j < layers[i]; j++) {
+                    const x = layerPositions[i];
+                    const y = (networkCanvas.height / (layers[i] + 1)) * (j + 1);
+                    
+                    // Desenhar conexões para a próxima camada
+                    if (i < layers.length - 1) {
+                        for (let k = 0; k < layers[i + 1]; k++) {
+                            const endX = layerPositions[i + 1];
+                            const endY = (networkCanvas.height / (layers[i + 1] + 1)) * (k + 1);
+                            netCtx.strokeStyle = `rgba(255, 255, 255, 0.1)`;
+                            netCtx.lineWidth = 1;
+                            netCtx.beginPath();
+                            netCtx.moveTo(x, y);
+                            netCtx.lineTo(endX, endY);
+                            netCtx.stroke();
+                        }
+                    }
+
+                    // Desenhar nó
+                    netCtx.fillStyle = colors[i];
+                    netCtx.beginPath();
+                    netCtx.arc(x, y, 5, 0, Math.PI * 2);
+                    netCtx.fill();
+                }
+            }
+
+            // Desenhar rótulos de entrada
+            netCtx.fillStyle = "#fff";
+            netCtx.font = "12px Arial";
+            netCtx.textAlign = "right";
+            for (let i = 0; i < inputLabels.length; i++) {
+                const x = layerPositions[0] - 10;
+                const y = (networkCanvas.height / (layers[0] + 1)) * (i + 1);
+                netCtx.fillText(inputLabels[i], x, y + 3);
+            }
+
+            // Desenhar rótulo de saída
+            netCtx.textAlign = "left";
+            netCtx.fillText("Movimento", layerPositions[3] + 10, networkCanvas.height / 2);
+        };
+
+        const updateStats = () => {
+            const statsDiv = document.getElementById("stats");
+            const stats = [
+                ["Previsão", aiPrediction.toFixed(2), -1, 1],
+				["Confiança", aiConfidence.toFixed(2), 0, 1],
+                ["Taxa de Aprendizado", learningRate.toFixed(4), 0, 0.01],
+                ["Rodadas de Treino", trainingRounds.toString(), 0, 1000],
+                ["Perda da Rede", networkLoss ? networkLoss.toFixed(4) : "N/A", 0, 1],
+                ["Pontos de Dados", trainingData.length.toString(), 0, batchSize],
+                ["Melhoria da IA", aiImprovement.toFixed(2) + "%", 0, 100]
+            ];
+
+            statsDiv.innerHTML = stats.map(stat => `
+                <div class="ai-info">
+                    <span>${stat[0]}: ${stat[1]}</span>
+                    <div class="bar" style="width: ${100 * Math.min(Math.max((parseFloat(stat[1]) - stat[2]) / (stat[3] - stat[2]), 0), 1)}%"></div>
+                </div>
+            `).join("");
+        };
+
+        const endGame = () => {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            document.getElementById("menu").style.display = "block";
+        };
+
+        const setDifficulty = (level) => {
+            difficulty = level;
+            initialBallSpeed = 5 * level;
+            learningRate = 0.01 / level;
+            model.compile({ loss: "meanSquaredError", optimizer: tf.train.adam(learningRate) });
+            document.getElementById("menu").style.display = "none";
+            initGame();
+            startGame();
+        };
+
+        canvas.addEventListener("mousemove", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            playerY = e.clientY - rect.top - paddleHeight / 2;
+            playerY = Math.max(0, Math.min(canvas.height - paddleHeight, playerY));
+        });
+
+        document.getElementById("start").addEventListener("click", startGame);
+        document.getElementById("pause").addEventListener("click", () => {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            draw();
+        });
+        document.getElementById("reset").addEventListener("click", () => {
+            endGame();
+            playerScore = aiScore = 0;
+            trainingData = [];
+            trainingRounds = 0;
+            networkLoss = 0;
+            aiImprovement = 0;
+            initGame();
+        });
+
+        document.getElementById("easy").addEventListener("click", () => setDifficulty(0.5));
+        document.getElementById("medium").addEventListener("click", () => setDifficulty(1));
+        document.getElementById("hard").addEventListener("click", () => setDifficulty(1.5));
+
+        initGame();
+    </script>
+</body>
+</html>

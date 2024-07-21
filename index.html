@@ -19,7 +19,7 @@
         }
         #game {
             display: flex;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         canvas {
             border: 2px solid #16213e;
@@ -173,60 +173,48 @@
         model.add(tf.layers.dense({ units: 1, activation: "tanh" }));
         model.compile({ loss: "meanSquaredError", optimizer: tf.train.adam(learningRate) });
 
-        // Improved AI prediction
+        // Basic Pong strategy
+        const basicPongStrategy = (ballY, aiY) => {
+            const paddleCenter = aiY + paddleHeight / 2;
+            if (ballY > paddleCenter) {
+                return 1; // Move down
+            } else if (ballY < paddleCenter) {
+                return -1; // Move up
+            }
+            return 0; // Stay in place
+        };
+
         const predictAiMove = async () => {
-            const input = tf.tensor2d([[
-                ballX / canvas.width,
-                ballY / canvas.height,
-                ballSpeedX / maxBallSpeed,
-                ballSpeedY / maxBallSpeed,
-                aiY / canvas.height
-            ]]);
+            const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, ballSpeedY / maxBallSpeed, aiY / canvas.height]]);
             const prediction = await model.predict(input).data();
             aiPrediction = prediction[0];
-            const targetY = (aiY + paddleHeight / 2) / canvas.height + aiPrediction;
-            aiY += (targetY * canvas.height - (aiY + paddleHeight / 2)) * difficulty;
+            
+            // Combine AI prediction with basic strategy
+            const basicMove = basicPongStrategy(ballY, aiY);
+            const combinedMove = (aiPrediction + basicMove) / 2;
+            
+            aiY += combinedMove * paddleSpeed * difficulty;
             aiY = Math.max(0, Math.min(canvas.height - paddleHeight, aiY));
             aiConfidence = Math.abs(aiPrediction);
             updateStats();
             drawNetwork();
         };
 
-        // Improved data collection
         const collectTrainingData = () => {
-            const input = [
-                ballX / canvas.width,
-                ballY / canvas.height,
-                ballSpeedX / maxBallSpeed,
-                ballSpeedY / maxBallSpeed,
-                aiY / canvas.height
-            ];
+            const input = [ballX / canvas.width, ballY / canvas.height, ballSpeedX / maxBallSpeed, ballSpeedY / maxBallSpeed, aiY / canvas.height];
             const label = [(ballY - (aiY + paddleHeight / 2)) / (canvas.height / 2)];
             trainingData.push({ input, label });
-            if (trainingData.length > batchSize * 10) trainingData.shift();
+            if (trainingData.length > batchSize) trainingData.shift();
             updateStats();
         };
 
-        // Improved model training
         const trainModel = async () => {
             if (trainingData.length < batchSize) return;
-            const batchData = tf.tidy(() => {
-                const batchIndices = tf.randomUniform([batchSize], 0, trainingData.length, 'int32');
-                const batch = batchIndices.dataSync().map(index => trainingData[index]);
-                const inputs = tf.tensor2d(batch.map(d => d.input));
-                const labels = tf.tensor2d(batch.map(d => d.label));
-                return { inputs, labels };
-            });
-
-            const result = await model.fit(batchData.inputs, batchData.labels, {
-                epochs: 1,
-                batchSize: batchSize,
-                shuffle: true
-            });
-
-            batchData.inputs.dispose();
-            batchData.labels.dispose();
-
+            const inputs = tf.tensor2d(trainingData.map(d => d.input));
+            const labels = tf.tensor2d(trainingData.map(d => d.label));
+            const result = await model.fit(inputs, labels, { epochs: 5, batchSize: batchSize, shuffle: true });
+            inputs.dispose();
+            labels.dispose();
             trainingRounds++;
             networkLoss = result.history.loss[0];
             aiImprovement = Math.max(0, 100 * (1 - networkLoss / (aiImprovement || 1)));
@@ -338,7 +326,7 @@
 
             const layers = [5, 32, 16, 8, 1];
             const layerPositions = [50, 150, 250, 350, 450];
-            const inputLabels = ["Bola X", "Bola Y", "Velocidade X da Bola", "Velocidade Y da Bola", "Raquete Y da IA"];
+            const inputLabels = ["Bola X", "Bola Y", "Velocidade X", "Velocidade Y", "Raquete Y"];
             const colors = ["#ffd700", "#87cefa", "#90ee90", "#ff6347", "#da70d6"];
 
             // Desenhar nós e conexões
@@ -392,7 +380,7 @@
                 ["Taxa de Aprendizado", learningRate.toFixed(4), 0, 0.01],
                 ["Rodadas de Treino", trainingRounds.toString(), 0, 1000],
                 ["Perda da Rede", networkLoss ? networkLoss.toFixed(4) : "N/A", 0, 1],
-                ["Pontos de Dados", trainingData.length.toString(), 0, batchSize * 10],
+                ["Pontos de Dados", trainingData.length.toString(), 0, batchSize],
                 ["Melhoria da IA", aiImprovement.toFixed(2) + "%", 0, 100]
             ];
 

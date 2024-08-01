@@ -1,363 +1,668 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong with TensorFlow.js AI</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
-    <style>
-        body {
-            background: #1a1a2e;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        #game {
-            display: flex;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        canvas {
-            border: 2px solid #16213e;
-            border-radius: 8px;
-        }
-        #ai-info {
-            width: 400px;
-            height: 600px;
-            background: #16213e;
-            border-radius: 8px;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-        }
-        #controls, #info, #score {
-            margin-top: 10px;
-            text-align: center;
-        }
-        button {
-            background: #0f3460;
-            border: none;
-            color: #fff;
-            padding: 10px 20px;
-            text-align: center;
-            font-size: 14px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background: #e94560;
-        }
-        #network-vis {
-            width: 100%;
-            height: calc(100% - 150px);
-            background: #0f3460;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        #stats {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-        .ai-info {
-            width: 48%;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        .bar {
-            height: 5px;
-            background: #e94560;
-            margin-top: 2px;
-            transition: width 0.3s ease-in-out;
-        }
-        h3 {
-            margin-top: 0;
-            text-align: center;
-        }
-        #made-by {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            font-size: 12px;
-            color: #e94560;
-        }
-    </style>
+<html><head><base href="https://dan.com"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Enhanced Pong: Player vs AI with Training Visualization</title><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><style>
+/* Estilos gerais do corpo da página */
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    background: #1a1a1a;
+    color: #fff;
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: hidden
+}
+
+/* Estilos para a área do jogo */
+#gameArea {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px
+}
+
+/* Estilos para o canvas do jogo */
+#gameCanvas {
+    border: 2px solid #4caf50;
+    background: #000;
+    box-shadow: 0 0 20px rgba(76, 175, 80, .5);
+    max-width: 100%;
+    height: auto
+}
+
+/* Estilos para o painel de informações */
+#infoPanel {
+    margin-top: 20px;
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, .3);
+    width: 100%;
+    max-width: 1200px;
+    overflow-y: auto
+}
+
+/* Estilos para a visualização dos valores Q */
+#qValueVisual {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-top: 10px
+}
+
+#qValueVisual div {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #4caf50;
+    font-size: 10px;
+    transition: all .3s ease
+}
+
+#qValueVisual div:hover {
+    transform: scale(1.1)
+}
+
+/* Estilos para os contêineres dos gráficos */
+.chart-container {
+    position: relative;
+    height: 150px;
+    width: 100%;
+    margin-top: 20px
+}
+
+/* Estilos para cabeçalhos */
+h2,
+h3 {
+    color: #4caf50
+}
+
+/* Estilos para o botão de alternância de idioma */
+#languageToggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 10px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000
+}
+
+/* Estilos para o cabeçalho principal */
+.header {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #4caf50;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #4caf50;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+    width: 100%;
+    max-width: 1200px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase
+}
+
+/* Estilos responsivos para telas maiores */
+@media (min-width: 1024px) {
+    #gameArea {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start
+    }
+
+    #gameCanvas {
+        width: 60%;
+        max-width: 800px
+    }
+
+    #infoPanel {
+        width: 35%;
+        margin-top: 0;
+        max-height: 80vh;
+        overflow-y: auto
+    }
+}
+
+/* Estilos responsivos para telas menores */
+@media (max-width: 1023px) {
+    body {
+        padding: 5px
+    }
+
+    #infoPanel {
+        padding: 10px
+    }
+
+    #qValueVisual div {
+        font-size: 8px
+    }
+
+    .header {
+        font-size: 16px
+    }
+
+    #gameCanvas {
+        width: 100%;
+        max-width: 600px
+    }
+}
+</style>
 </head>
+
 <body>
-    <div id="game">
-        <div>
-            <canvas id="pong" width="800" height="600"></canvas>
-            <div id="score">Player: <span id="player-score">0</span> | AI: <span id="ai-score">0</span></div>
-            <div id="info">Ball Speed: <span id="ball-speed">0</span></div>
-            <div id="controls">
-                <button id="start">Start</button>
-                <button id="pause">Pause</button>
-                <button id="reset">Reset</button>
-            </div>
-        </div>
-        <div id="ai-info">
-            <h3>AI Neural Network Visualization</h3>
-            <canvas id="network-vis" width="400" height="450"></canvas>
-            <div id="stats"></div>
-        </div>
+<!-- Botão para alternar entre idiomas -->
+<button id="languageToggle">Mudar para PtBr</button>
+
+<!-- Cabeçalho principal -->
+<div class="header">Made with ❤️ by Daniel M</div>
+
+<!-- Área do jogo -->
+<div id="gameArea">
+    <!-- Canvas onde o jogo será renderizado -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <!-- Painel de informações -->
+    <div id="infoPanel">
+        <h2 id="aiTrainingInfo">AI Training Information</h2>
+        <div id="performanceMetrics"></div>
+        <div id="qValueVisual"></div>
+        <div class="chart-container"><canvas id="rewardChart"></canvas></div>
+        <div class="chart-container"><canvas id="epsilonChart"></canvas></div>
     </div>
-    <div id="made-by">Made with &lt;3 by Your AI Assistant</div>
+</div>
 
-    <script>
-        const canvas = document.getElementById("pong");
-        const ctx = canvas.getContext("2d");
-        const paddleHeight = 100;
-        const paddleWidth = 10;
-        const ballRadius = 5;
-        const paddleSpeed = 5;
-        const maxBallSpeed = 15;
+<script>
+// Classe que representa o jogo Pong
+class PongGame {
+    constructor(e) {
+        // Inicializa as propriedades do jogo
+        this.canvas = e;
+        this.ctx = e.getContext("2d");
+        this.width = e.width;
+        this.height = e.height;
+        this.paddleWidth = 10;
+        this.paddleHeight = 80;
+        this.ballSize = 8;
+        this.reset();
 
-        let playerY, aiY, ballX, ballY, ballSpeedX, ballSpeedY;
-        let playerScore = 0, aiScore = 0;
-        let isPlaying = false;
-        let animationId = null;
-        let aiPrediction = 0;
-        let aiConfidence = 0;
-        let networkLoss = 0;
+        // Cria um canvas para o mapa de calor
+        this.heatmapCanvas = document.createElement("canvas");
+        this.heatmapCanvas.width = this.width;
+        this.heatmapCanvas.height = this.height;
+        this.heatmapCtx = this.heatmapCanvas.getContext("2d");
 
-        const drawRect = (x, y, w, h) => ctx.fillRect(x, y, w, h);
-        const drawCircle = (x, y, r) => {
-            ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fill();
+        // Inicializa arrays e objetos para visualizações
+        this.decisionPoints = [];
+        this.predictionLine = {
+            x: 0,
+            y: 0,
+            visible: !1
+        };
+        this.confidenceCircle = {
+            x: 0,
+            y: 0,
+            radius: 0,
+            visible: !1
         };
 
-        // Create the model
-        const model = tf.sequential();
-        model.add(tf.layers.dense({ units: 16, activation: 'relu', inputShape: [3] }));
-        model.add(tf.layers.dense({ units: 8, activation: 'relu' }));
-        model.add(tf.layers.dense({ units: 1, activation: 'tanh' }));
-        model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+        // Inicializa o fator de escala e redimensiona o canvas
+        this.scaleFactor = 1;
+        this.resizeCanvas()
+    }
 
-        // Initialize the model with some knowledge of Pong
-        const initializeModel = async () => {
-            const initialData = [
-                { input: [0.5, 0.5, 0], output: [0] },  // Ball in center, no movement
-                { input: [0.5, 0.25, -0.5], output: [-0.5] },  // Ball moving up, paddle should move up
-                { input: [0.5, 0.75, 0.5], output: [0.5] },  // Ball moving down, paddle should move down
-                { input: [0.25, 0.5, 0.5], output: [0] },  // Ball moving towards paddle, stay centered
-            ];
+    // Método para redimensionar o canvas
+    resizeCanvas() {
+        const e = this.canvas.parentElement.clientWidth,
+            t = window.innerHeight * .8;
+        let i = Math.min(e, 800) / 800;
+        this.canvas.style.width = `${800*i}px`;
+        this.canvas.style.height = `${600*i}px`;
+        this.scaleFactor = i
+    }
 
-            const xs = tf.tensor2d(initialData.map(d => d.input));
-            const ys = tf.tensor2d(initialData.map(d => d.output));
-
-            await model.fit(xs, ys, { epochs: 100, verbose: 0 });
-
-            xs.dispose();
-            ys.dispose();
+    // Método para reiniciar o jogo
+    reset() {
+        // Reinicia as posições e pontuações dos jogadores e da bola
+        this.player = {
+            y: this.height / 2 - this.paddleHeight / 2,
+            score: 0
         };
-
-        initializeModel();
-
-        const predictAiMove = async () => {
-            const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedY / maxBallSpeed]]);
-            const prediction = await model.predict(input).data();
-            aiPrediction = prediction[0];
-            aiY += aiPrediction * paddleSpeed;
-            aiY = Math.max(0, Math.min(canvas.height - paddleHeight, aiY));
-            aiConfidence = Math.abs(aiPrediction);
-            input.dispose();
-            updateStats();
-            drawNetwork();
+        this.ai = {
+            y: this.height / 2 - this.paddleHeight / 2,
+            score: 0
         };
-
-        const trainModel = async () => {
-            const input = tf.tensor2d([[ballX / canvas.width, ballY / canvas.height, ballSpeedY / maxBallSpeed]]);
-            const label = tf.tensor2d([[(ballY - (aiY + paddleHeight / 2)) / (canvas.height / 2)]]);
-            
-            const result = await model.fit(input, label, { epochs: 1 });
-            networkLoss = result.history.loss[0];
-
-            input.dispose();
-            label.dispose();
-            updateStats();
-            drawNetwork();
+        this.ball = {
+            x: this.width / 2,
+            y: this.height / 2,
+            dx: 4 * (Math.random() > .5 ? 1 : -1),
+            dy: 4 * (Math.random() > .5 ? 1 : -1)
         };
+        this.decisionPoints = []
+    }
 
-        const update = async () => {
-            if (isPlaying) {
-                ballX += ballSpeedX;
-                ballY += ballSpeedY;
+    // Método para atualizar o estado do jogo
+    update() {
+        this.moveBall();
+        this.checkCollisions()
+    }
 
-                if (ballY < 0 || ballY > canvas.height) {
-                    ballSpeedY = -ballSpeedY;
-                }
+    // Método para mover a bola
+    moveBall() {
+        this.ball.x += this.ball.dx;
+        this.ball.y += this.ball.dy
+    }
 
-                if (ballX < paddleWidth && ballY > playerY && ballY < playerY + paddleHeight) {
-                    ballSpeedX = -ballSpeedX;
-                    const deltaY = ballY - (playerY + paddleHeight / 2);
-                    ballSpeedY += deltaY * 0.2;
-                } else if (ballX < 0) {
-                    aiScore++;
-                    resetBall();
-                }
+    // Método para mover a raquete da IA
+    moveAIPaddle(e) {
+        this.ai.y = Math.max(0, Math.min(this.height - this.paddleHeight, this.ai.y + e))
+    }
 
-                if (ballX > canvas.width - paddleWidth && ballY > aiY && ballY < aiY + paddleHeight) {
-                    ballSpeedX = -ballSpeedX;
-                    const deltaY = ballY - (aiY + paddleHeight / 2);
-                    ballSpeedY += deltaY * 0.2;
-                } else if (ballX > canvas.width) {
-                    playerScore++;
-                    resetBall();
-                }
+    // Método para mover a raquete do jogador
+    movePlayerPaddle(e) {
+        this.player.y = Math.max(0, Math.min(this.height - this.paddleHeight, e))
+    }
 
-                await predictAiMove();
-                await trainModel();
+    // Método para verificar colisões
+    checkCollisions() {
+        // Verifica colisão com as bordas superior e inferior
+        (this.ball.y <= 0 || this.ball.y + this.ballSize >= this.height) && (this.ball.dy *= -1);
 
-                updateBallSpeed();
-                updateScore();
-                draw();
-            }
+        // Verifica colisão com as raquetes
+        this.ball.x <= this.paddleWidth && this.ball.y + this.ballSize >= this.player.y && this.ball.y <= this.player.y + this.paddleHeight ? (this.ball.dx *= -1, this.ball.dx *= 1.05) : this.ball.x + this.ballSize >= this.width - this.paddleWidth && this.ball.y + this.ballSize >= this.ai.y && this.ball.y <= this.ai.y + this.paddleHeight && (this.ball.dx *= -1, this.ball.dx *= 1.05)
+    }
 
-            animationId = requestAnimationFrame(update);
-        };
+    // Método para desenhar o jogo
+    draw() {
+        // Limpa o canvas e desenha o fundo
+        this.ctx.fillStyle = "#000";
+        this.ctx.fillRect(0, 0, this.width, this.height);
 
-        const resetBall = () => {
-            ballX = canvas.width / 2;
-            ballY = canvas.height / 2;
-            ballSpeedX = 5 * (Math.random() > 0.5 ? 1 : -1);
-            ballSpeedY = 5 * (Math.random() > 0.5 ? 1 : -1);
-        };
+        // Desenha o mapa de calor
+        this.ctx.globalAlpha = .3;
+        this.ctx.drawImage(this.heatmapCanvas, 0, 0);
+        this.ctx.globalAlpha = 1;
 
-        const updateScore = () => {
-            document.getElementById("player-score").textContent = playerScore;
-            document.getElementById("ai-score").textContent = aiScore;
-        };
+        // Desenha as raquetes e a bola
+        this.ctx.fillStyle = "#fff";
+        this.ctx.fillRect(0, this.player.y, this.paddleWidth, this.paddleHeight);
+        this.ctx.fillRect(this.width - this.paddleWidth, this.ai.y, this.paddleWidth, this.paddleHeight);
+        this.ctx.beginPath();
+        this.ctx.arc(this.ball.x + this.ballSize / 2, this.ball.y + this.ballSize / 2, this.ballSize / 2, 0, 2 * Math.PI);
+        this.ctx.fill();
 
-        const draw = () => {
-            ctx.fillStyle = "#1a1a2e";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#e94560";
-            drawRect(0, playerY, paddleWidth, paddleHeight);
-            drawRect(canvas.width - paddleWidth, aiY, paddleWidth, paddleHeight);
-            drawCircle(ballX, ballY, ballRadius);
+        // Desenha os pontos de decisão e visualizações da IA
+        this.drawDecisionPoints();
+        this.drawAIVisualizations();
 
-            if (!isPlaying) {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-                ctx.font = "30px Arial";
-                ctx.fillText("Paused", canvas.width / 2 - 50, canvas.height / 2);
-            }
-        };
+        // Desenha a pontuação
+        this.ctx.font = "24px Arial";
+        this.ctx.fillText(`Player: ${this.player.score}`, 50, 30);
+        this.ctx.fillText(`AI: ${this.ai.score}`, this.width - 120, 30)
+    }
 
-        const startGame = () => {
-            isPlaying = true;
-            update();
-        };
+    // Método para desenhar os pontos de decisão
+    drawDecisionPoints() {
+        this.ctx.strokeStyle = "rgba(255, 255, 0, 0.5)";
+        this.ctx.lineWidth = 2;
+        this.decisionPoints.forEach(e => {
+            this.ctx.beginPath();
+            this.ctx.moveTo(e.x, e.y);
+            this.ctx.lineTo(e.x + 20 * e.dx, e.y + 20 * e.dy);
+            this.ctx.stroke()
+        })
+    }
 
-        const updateBallSpeed = () => {
-            let speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
-            document.getElementById("ball-speed").textContent = speed.toFixed(2);
-        };
+    // Método para desenhar as visualizações da IA
+    drawAIVisualizations() {
+        // Desenha a linha de previsão
+        this.predictionLine.visible && (this.ctx.strokeStyle = "rgba(0, 255, 0, 0.5)", this.ctx.lineWidth = 2, this.ctx.beginPath(), this.ctx.moveTo(this.ball.x, this.ball.y), this.ctx.lineTo(this.predictionLine.x, this.predictionLine.y), this.ctx.stroke());
 
-        const initGame = () => {
-            playerY = aiY = (canvas.height - paddleHeight) / 2;
-            resetBall();
-            updateScore();
-            draw();
-            updateBallSpeed();
-            updateStats();
-            drawNetwork();
-        };
+        // Desenha o círculo de confiança
+        this.confidenceCircle.visible && (this.ctx.strokeStyle = "rgba(255, 165, 0, 0.5)", this.ctx.lineWidth = 2, this.ctx.beginPath(), this.ctx.arc(this.confidenceCircle.x, this.confidenceCircle.y, this.confidenceCircle.radius, 0, 2 * Math.PI), this.ctx.stroke())
+    }
 
-        const drawNetwork = () => {
-            const networkCanvas = document.getElementById("network-vis");
-            const netCtx = networkCanvas.getContext("2d");
-            networkCanvas.width = 400;
-            networkCanvas.height = 450;
+    // Método para adicionar um ponto de decisão
+    addDecisionPoint(e, t, i) {
+        this.decisionPoints.push({
+            x: e,
+            y: t,
+            dx: i
+        });
+        this.decisionPoints.length > 5 && this.decisionPoints.shift()
+    }
 
-            netCtx.clearRect(0, 0, networkCanvas.width, networkCanvas.height);
+    // Método para verificar se o jogo acabou
+    isGameOver() {
+        return this.ball.x <= 0 || this.ball.x + this.ballSize >= this.width
+    }
 
-            const layers = [3, 16, 8, 1];
-            const layerPositions = [50, 150, 250, 350];
-            const inputLabels = ["Ball X", "Ball Y", "Ball Speed Y"];
-            const colors = ["#ffd700", "#87cefa", "#90ee90", "#ff6347"];
+    // Método para obter o vencedor
+    getWinner() {
+        return this.ball.x <= 0 ? (this.ai.score++, "AI") : (this.player.score++, "Player")
+    }
 
-            for (let i = 0; i < layers.length; i++) {
-                for (let j = 0; j < layers[i]; j++) {
-                    const x = layerPositions[i];
-                    const y = (networkCanvas.height / (layers[i] + 1)) * (j + 1);
-                    
-                    if (i < layers.length - 1) {
-                        for (let k = 0; k < layers[i + 1]; k++) {
-                            const endX = layerPositions[i + 1];
-                            const endY = (networkCanvas.height / (layers[i + 1] + 1)) * (k + 1);
-                            netCtx.strokeStyle = `rgba(255, 255, 255, 0.1)`;
-                            netCtx.lineWidth = 1;
-                            netCtx.beginPath();
-                            netCtx.moveTo(x, y);
-                            netCtx.lineTo(endX, endY);
-                            netCtx.stroke();
-                        }
-                    }
+    // Método para atualizar o mapa de calor
+    updateHeatmap(e) {
+        this.heatmapCtx.clearRect(0, 0, this.width, this.height);
+        const t = Math.max(...Object.values(e)),
+            i = Math.min(...Object.values(e));
+        for (let s = 0; s < this.height; s += 10) {
+            const a = e[s] || 0,
+                h = 240 * (1 - (a - i) / (t - i));
+            this.heatmapCtx.fillStyle = `hsla(${h}, 100%, 50%, 0.5)`;
+            this.heatmapCtx.fillRect(this.width - this.paddleWidth, s, this.paddleWidth, 10)
+        }
+    }
 
-                    netCtx.fillStyle = colors[i];
-                    netCtx.beginPath();
-                    netCtx.arc(x, y, 5, 0, Math.PI * 2);
-                    netCtx.fill();
-                }
-            }
+    // Método para atualizar as visualizações da IA
+    updateAIVisualizations(e, t, i) {
+        this.predictionLine.x = e;
+        this.predictionLine.y = t;
+        this.predictionLine.visible = !0;
+        this.confidenceCircle.x = this.width - this.paddleWidth;
+        this.confidenceCircle.y = this.ai.y + this.paddleHeight / 2;
+        this.confidenceCircle.radius = 20 * i;
+        this.confidenceCircle.visible = !0
+    }
+}
 
-            netCtx.fillStyle = "#fff";
-            netCtx.font = "12px Arial";
-            netCtx.textAlign = "right";
-            for (let i = 0; i < inputLabels.length; i++) {
-                const x = layerPositions[0] - 10;
-                const y = (networkCanvas.height / (layers[0] + 1)) * (i + 1);
-                netCtx.fillText(inputLabels[i], x, y + 3);
-            }
+// Classe que controla a IA
+class AIController {
+    constructor(e) {
+        this.game = e;
+        this.learningRate = .1;
+        this.discountFactor = .95;
+        this.epsilon = 1;
+        this.epsilonDecay = .9995;
+        this.minEpsilon = .01;
+        this.qTable = {};
+        this.actions = [-5, -3, -1, 0, 1, 3, 5];
+        this.lastState = null;
+        this.lastAction = null;
+        this.gameCount = 0;
+        this.winCount = 0;
+        this.totalReward = 0;
+        this.rewardHistory = [];
+        this.epsilonHistory = [];
+        this.frameCount = 0;
+        this.lastUpdateTime = performance.now()
+    }
 
-            netCtx.textAlign = "left";
-            netCtx.fillText("Movement", layerPositions[3] + 10, networkCanvas.height / 2);
-        };
+    // Método para obter o estado atual
+    getState() {
+        const e = Math.round(this.game.ball.x / 50),
+            t = Math.round(this.game.ball.y / 50),
+            i = Math.round(this.game.ai.y / 50);
+        return `${e},${t},${i}`
+    }
 
-        const updateStats = () => {
-            const statsDiv = document.getElementById("stats");
-            const stats = [
-                ["Prediction", aiPrediction.toFixed(2), -1, 1],
-                ["Confidence", aiConfidence.toFixed(2), 0, 1],
-                ["Network Loss", networkLoss ? networkLoss.toFixed(4) : "N/A", 0, 1],
-            ];
+    // Método para escolher uma ação
+    getAction(e) {
+        // Exploração aleatória com probabilidade epsilon
+        if (Math.random() < this.epsilon) return this.actions[Math.floor(Math.random() * this.actions.length)];
 
-            statsDiv.innerHTML = stats.map(stat => `
-                <div class="ai-info">
-                    <span>${stat[0]}: ${stat[1]}</span>
-                    <div class="bar" style="width: ${100 * Math.min(Math.max((parseFloat(stat[1]) - stat[2]) / (stat[3] - stat[2]), 0), 1)}%"></div>
-                </div>
-            `).join("");
-        };
-
-        canvas.addEventListener("mousemove", (e) => {
-            const rect = canvas.getBoundingClientRect();
-            playerY = e.clientY - rect.top - paddleHeight / 2;
-            playerY = Math.max(0, Math.min(canvas.height - paddleHeight, playerY));
+        // Inicializa o estado na tabela Q se não existir
+        this.qTable[e] || (this.qTable[e] = {});
+        this.actions.forEach(t => {
+            this.qTable[e][t] || (this.qTable[e][t] = 0)
         });
 
-        document.getElementById("start").addEventListener("click", startGame);
-        document.getElementById("pause").addEventListener("click", () => {
-            isPlaying = false;
-            cancelAnimationFrame(animationId);
-            draw();
-        });
-        document.getElementById("reset").addEventListener("click", () => {
-            cancelAnimationFrame(animationId);
-            playerScore = aiScore = 0;
-            initGame();
-        });
+        // Escolhe a ação com maior valor Q
+        const t = Object.entries(this.qTable[e]).reduce((e, t) => t[1] > e[1] ? t : e);
+        return Number(t[0])
+    }
 
-        initGame();
-    </script>
+    // Método principal de atualização da IA
+    update() {
+        const e = this.getState(),
+            t = this.getAction(e);
+        this.game.moveAIPaddle(t);
+        this.getReward();
+
+        // Atualiza a tabela Q
+        if (null !== this.lastState && null !== this.lastAction) {
+            this.qTable[this.lastState] || (this.qTable[this.lastState] = {});
+            this.qTable[this.lastState][this.lastAction] || (this.qTable[this.lastState][this.lastAction] = 0);
+            const t = this.qTable[this.lastState][this.lastAction];
+            this.qTable[e] || (this.qTable[e] = {});
+            this.actions.forEach(t => {
+                this.qTable[e][t] || (this.qTable[e][t] = 0)
+            });
+            const i = Math.max(...Object.values(this.qTable[e])),
+                s = t + this.learningRate * (this.getReward() + this.discountFactor * i - t);
+            this.qTable[this.lastState][this.lastAction] = s
+        }
+
+        // Atualiza o estado e ação anteriores
+        this.lastState = e;
+        this.lastAction = t;
+        this.totalReward += this.getReward();
+        this.game.addDecisionPoint(this.game.ball.x, this.game.ball.y, t);
+
+        // Atualiza as visualizações da IA
+        const i = this.predictBallPosition(),
+            s = this.getConfidence(e);
+        this.game.updateAIVisualizations(this.game.width - this.game.paddleWidth, i, s);
+
+        // Atualiza as visualizações periodicamente
+        this.frameCount++;
+        performance.now() - this.lastUpdateTime >= 1e3 && (this.updateVisualizations(), this.lastUpdateTime = performance.now());
+
+        // Verifica se o jogo acabou
+        if (this.game.isGameOver()) {
+            this.game.getWinner() === "AI" && this.winCount++;
+            this.gameCount++;
+            this.epsilon = Math.max(this.minEpsilon, this.epsilon * this.epsilonDecay);
+            this.rewardHistory.push(this.totalReward);
+            this.epsilonHistory.push(this.epsilon);
+            this.updateVisualizations();
+            this.game.reset();
+            this.lastState = null;
+            this.lastAction = null
+        }
+    }
+
+    // Método para calcular a recompensa
+    getReward() {
+        return this.game.ball.x > this.game.width / 2 ? 1 : this.game.ball.x < this.game.width / 2 ? -1 : 0
+    }
+
+    // Método para prever a posição da bola
+    predictBallPosition() {
+        const e = (this.game.width - this.game.paddleWidth - this.game.ball.x) / this.game.ball.dx;
+        return this.game.ball.y + this.game.ball.dy * e
+    }
+
+    // Método para calcular a confiança da IA
+    getConfidence(e) {
+        if (!this.qTable[e]) return 0;
+        const t = Object.values(this.qTable[e]);
+        return Math.max(...t) - Math.min(...t)
+    }
+
+    // Método para atualizar as visualizações
+    updateVisualizations() {
+        this.updatePerformanceMetrics();
+        this.updateCharts();
+        this.visualizeQValues(this.getState());
+        const e = {};
+        for (let t = 0; t < this.game.height; t += 10) {
+            const i = `${Math.round(this.game.ball.x/50)},${Math.round(this.game.ball.y/50)},${Math.round(t/50)}`;
+            this.qTable[i] && (e[t] = Math.max(...Object.values(this.qTable[i])))
+        }
+        this.game.updateHeatmap(e)
+    }
+
+    // Método para atualizar as métricas de desempenho
+    updatePerformanceMetrics() {
+        const e = document.getElementById("performanceMetrics"),
+            t = this.gameCount > 0 ? this.winCount / this.gameCount : 0,
+            i = this.gameCount > 0 ? this.totalReward / this.gameCount : 0;
+        e.innerHTML = `<h3>${currentLanguage==="en"?"Performance Metrics":"Métricas de Desempenho"}</h3>${currentLanguage==="en"?"Games Played":"Jogos Jogados"}: ${this.gameCount}<br>${currentLanguage==="en"?"Win Rate":"Taxa de Vitória"}: ${(100*t).toFixed(2)}%<br>${currentLanguage==="en"?"Avg Reward":"Recompensa Média"}: ${i.toFixed(2)}<br>${currentLanguage==="en"?"Epsilon":"Épsilon"}: ${this.epsilon.toFixed(4)}`
+    }
+
+    // Método para visualizar os valores Q
+    visualizeQValues(e) {
+        const t = document.getElementById("qValueVisual");
+        t.innerHTML = `<h3>${currentLanguage==="en"?"Q-Values for Current State":"Valores Q para o Estado Atual"}</h3>`;
+        const i = this.qTable[e] || {};
+        this.actions.forEach(e => {
+            const s = document.createElement("div"),
+                a = i[e] || 0;
+            s.style.backgroundColor = this.getColor(a);
+            s.textContent = `${e}: ${a.toFixed(2)}`;
+            t.appendChild(s)
+        })
+    }
+
+    // Método para obter a cor baseada no valor Q
+    getColor(e) {
+        const t = Math.max(-1, Math.min(1, e)),
+            i = t > 0 ? (255 - Math.round(255 * t)).toString(16).padStart(2, "0") : "ff",
+            s = t < 0 ? (255 - Math.round(255 * Math.abs(t))).toString(16).padStart(2, "0") : "ff";
+        return `#${t>0?"ff":s}${i}00`
+    }
+
+    // Método para atualizar os gráficos
+    updateCharts() {
+        rewardChart.data.labels.push(this.gameCount);
+        rewardChart.data.datasets[0].data.push(this.totalReward);
+        rewardChart.data.labels.length > 50 && (rewardChart.data.labels.shift(), rewardChart.data.datasets[0].data.shift());
+        rewardChart.update();
+        epsilonChart.data.labels.push(this.gameCount);
+        epsilonChart.data.datasets[0].data.push(this.epsilon);
+        epsilonChart.data.labels.length > 50 && (epsilonChart.data.labels.shift(), epsilonChart.data.datasets[0].data.shift());
+        epsilonChart.update()
+    }
+}
+
+// Inicialização do jogo e da IA
+const canvas = document.getElementById("gameCanvas"),
+    game = new PongGame(canvas),
+    ai = new AIController(game),
+    rewardChart = new Chart(document.getElementById("rewardChart").getContext("2d"), {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Cumulative Reward",
+                data: [],
+                borderColor: "rgb(75, 192, 192)",
+                tension: .1
+            }]
+        },
+        options: {
+            responsive: !0,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: !1
+                }
+            }
+        }
+    }),
+    epsilonChart = new Chart(document.getElementById("epsilonChart").getContext("2d"), {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Epsilon",
+                data: [],
+                borderColor: "rgb(192, 75, 192)",
+                tension: .1
+            }]
+        },
+        options: {
+            responsive: !0,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: !1
+                },
+                y: {
+                    min: 0,
+                    max: 1
+                }
+            }
+        }
+    });
+
+// Loop principal do jogo
+function gameLoop() {
+    game.update();
+    ai.update();
+    game.draw();
+    requestAnimationFrame(gameLoop)
+}
+
+// Função para lidar com o movimento do mouse
+function handleMouseMove(e) {
+    const t = canvas.getBoundingClientRect(),
+        i = (e.clientY - t.top) / game.scaleFactor;
+    game.movePlayerPaddle(i - game.paddleHeight / 2)
+}
+
+// Função para lidar com o movimento de toque
+function handleTouchMove(e) {
+    e.preventDefault();
+    const t = canvas.getBoundingClientRect(),
+        i = (e.touches[0].clientY - t.top) / game.scaleFactor;
+    game.movePlayerPaddle(i - game.paddleHeight / 2)
+}
+
+// Adiciona os event listeners
+canvas.addEventListener("mousemove", handleMouseMove);
+canvas.addEventListener("touchmove", handleTouchMove, {
+    passive: !1
+});
+canvas.addEventListener("touchstart", e => {
+    e.preventDefault()
+}, {
+    passive: !1
+});
+window.addEventListener("resize", () => {
+    game.resizeCanvas()
+});
+
+// Função para ajustar o layout para dispositivos móveis
+function checkMobileAndAdjustLayout() {
+    const e = window.matchMedia("(max-width: 1023px)").matches,
+        t = document.getElementById("gameArea"),
+        i = document.getElementById("gameCanvas"),
+        s = document.getElementById("infoPanel");
+    e ? (t.style.flexDirection = "column", i.style.width = "100%", i.style.maxWidth = "600px", s.style.width = "100%", s.style.marginTop = "20px", s.style.maxHeight = "none") : (t.style.flexDirection = "row", i.style.width = "60%", i.style.maxWidth = "800px", s.style.width = "35%", s.style.marginTop = "0", s.style.maxHeight = "80vh")
+}
+
+// Adiciona os event listeners para ajuste de layout
+window.addEventListener("load", checkMobileAndAdjustLayout);
+window.addEventListener("resize", checkMobileAndAdjustLayout);
+
+// Inicia o loop do jogo
+gameLoop();
+
+// Variáveis e funções para alternância de idioma
+let currentLanguage = "en";
+const languageToggle = document.getElementById("languageToggle"),
+    aiTrainingInfo = document.getElementById("aiTrainingInfo");
+
+function switchLanguage() {
+    currentLanguage = "en" === currentLanguage ? "pt" : "en";
+    "en" === currentLanguage ? (languageToggle.textContent = "Mudar para PtBr", aiTrainingInfo.textContent = "AI Training Information") : (languageToggle.textContent = "Change to EnUS", aiTrainingInfo.textContent = "Informações de Treinamento da IA");
+    ai.updatePerformanceMetrics()
+}
+
+// Adiciona o event listener para alternância de idioma
+languageToggle.addEventListener("click", switchLanguage);
+</script>
 </body>
 </html>

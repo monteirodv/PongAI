@@ -1,105 +1,99 @@
-# Pong AI: Neural Network-Powered Game
+# 🏓 Enhanced Pong: Player vs AI with Training Visualization
 
-[English](#english) | [Português Brasileiro](#português-brasileiro)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-1f425f.svg)](https://www.javascript.com)
+[![Made with ❤️ by Daniel M](https://img.shields.io/badge/Made%20with%20%E2%9D%A4%EF%B8%8F%20by-Daniel%20M-red.svg)](https://github.com/yourusername)
 
-## English
-
-### Description
-
-Pong AI is an interactive web-based implementation of the classic Pong game, featuring an AI opponent powered by a neural network. This project demonstrates the application of machine learning in real-time gaming, providing an engaging and educational experience for players and developers alike.
-
-### Features
-
-- Classic Pong gameplay with a neural network-controlled AI opponent
-- Real-time training of the AI during gameplay
-- Visualizations of the neural network and its decision-making process
-- Adjustable difficulty levels (Easy, Medium, Hard)
-- Responsive design for various screen sizes
-- Performance statistics and AI improvement tracking
-
-### How to Play
-
-1. Open the `index.html` file in a modern web browser.
-2. Choose a difficulty level (Easy, Medium, or Hard).
-3. Use your mouse to control the left paddle.
-4. Try to beat the AI opponent!
-
-### Technologies Used
-
-- HTML5 Canvas for game rendering
-- TensorFlow.js for neural network implementation
-- Vanilla JavaScript for game logic and UI
-
-### Installation
-
-No installation is required. Simply clone the repository and open the `index.html` file in a web browser.
-
-```bash
-git clone https://github.com/yourusername/pong-ai.git
-cd pong-ai
-open index.html
-```
-
-### Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-### License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-### Credits
-
-Developed with ❤️ by Daniel M
+[English](#english) | [Português](#português)
 
 ---
 
-## Português Brasileiro
+## English
 
-### Descrição
+### 📖 About
 
-Pong AI é uma implementação web interativa do clássico jogo Pong, apresentando um oponente controlado por inteligência artificial com uma rede neural. Este projeto demonstra a aplicação de aprendizado de máquina em jogos em tempo real, proporcionando uma experiência envolvente e educativa para jogadores e desenvolvedores.
+This project is an enhanced version of the classic Pong game, featuring a player versus an AI opponent. The AI uses reinforcement learning techniques to improve its gameplay over time. The game includes real-time visualizations of the AI's training process, making it both entertaining and educational.
 
-### Características
+### 🚀 Features
 
-- Jogabilidade clássica do Pong com um oponente de IA controlado por rede neural
-- Treinamento em tempo real da IA durante o jogo
-- Visualizações da rede neural e seu processo de tomada de decisão
-- Níveis de dificuldade ajustáveis (Fácil, Médio, Difícil)
-- Design responsivo para vários tamanhos de tela
-- Estatísticas de desempenho e acompanhamento da melhoria da IA
+- Classic Pong gameplay
+- AI opponent using Q-learning
+- Real-time visualization of AI training metrics
+- Responsive design for both desktop and mobile
+- Language toggle between English and Portuguese
 
-### Como Jogar
+### 🛠️ Technologies Used
 
-1. Abra o arquivo `index.html` em um navegador web moderno.
-2. Escolha um nível de dificuldade (Fácil, Médio ou Difícil).
-3. Use o mouse para controlar a raquete da esquerda.
-4. Tente vencer o oponente de IA!
+- HTML5 Canvas for game rendering
+- JavaScript for game logic and AI
+- Chart.js for data visualization
+- Responsive CSS for cross-device compatibility
 
-### Tecnologias Utilizadas
+### 🎮 How to Play
+
+1. Open the `index.html` file in a modern web browser
+2. Use your mouse or touch input to control the left paddle
+3. Try to beat the AI opponent!
+4. Watch the AI improve its strategy over time
+
+### 📊 AI Training Visualizations
+
+- Q-value heatmap for AI decision making
+- Performance metrics (games played, win rate, average reward)
+- Charts showing cumulative reward and exploration rate (epsilon) over time
+
+### 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check [issues page](https://github.com/yourusername/enhanced-pong/issues).
+
+### 📜 License
+
+This project is [MIT](https://opensource.org/licenses/MIT) licensed.
+
+---
+
+## Português
+
+### 📖 Sobre
+
+Este projeto é uma versão aprimorada do clássico jogo Pong, apresentando um jogador contra um oponente de IA. A IA usa técnicas de aprendizado por reforço para melhorar sua jogabilidade ao longo do tempo. O jogo inclui visualizações em tempo real do processo de treinamento da IA, tornando-o tanto divertido quanto educativo.
+
+### 🚀 Funcionalidades
+
+- Jogabilidade clássica do Pong
+- Oponente de IA usando Q-learning
+- Visualização em tempo real das métricas de treinamento da IA
+- Design responsivo para desktop e dispositivos móveis
+- Alternância de idioma entre inglês e português
+
+### 🛠️ Tecnologias Utilizadas
 
 - HTML5 Canvas para renderização do jogo
-- TensorFlow.js para implementação da rede neural
-- JavaScript puro para lógica do jogo e interface do usuário
+- JavaScript para lógica do jogo e IA
+- Chart.js para visualização de dados
+- CSS responsivo para compatibilidade entre dispositivos
 
-### Instalação
+### 🎮 Como Jogar
 
-Não é necessária instalação. Basta clonar o repositório e abrir o arquivo `index.html` em um navegador web.
+1. Abra o arquivo `index.html` em um navegador web moderno
+2. Use seu mouse ou entrada de toque para controlar a raquete esquerda
+3. Tente vencer o oponente de IA!
+4. Observe a IA melhorar sua estratégia ao longo do tempo
 
-```bash
-git clone https://github.com/seuusername/pong-ai.git
-cd pong-ai
-open index.html
-```
+### 📊 Visualizações de Treinamento da IA
 
-### Contribuindo
+- Mapa de calor de valores Q para tomada de decisão da IA
+- Métricas de desempenho (jogos jogados, taxa de vitória, recompensa média)
+- Gráficos mostrando recompensa cumulativa e taxa de exploração (epsilon) ao longo do tempo
 
-Contribuições são bem-vindas! Sinta-se à vontade para enviar um Pull Request.
+### 🤝 Contribuindo
 
-### Licença
+Contribuições, problemas e solicitações de recursos são bem-vindos! Sinta-se à vontade para verificar a [página de issues](https://github.com/yourusername/enhanced-pong/issues).
 
-Este projeto é de código aberto e está disponível sob a [Licença MIT](LICENSE).
+### 📜 Licença
 
-### Créditos
+Este projeto está licenciado sob a [MIT](https://opensource.org/licenses/MIT).
 
-Desenvolvido com ❤️ por Daniel M
+---
+
+Made with ❤️ by Daniel M

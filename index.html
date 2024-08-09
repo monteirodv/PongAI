@@ -1,668 +1,556 @@
-<html><head><base href="https://dan.com"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Enhanced Pong: Player vs AI with Training Visualization</title><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><style>
-/* Estilos gerais do corpo da página */
+
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Pong Estilo TRON: IA vs Humano (Aprimorado)</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
 body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 10px;
-    background: #1a1a1a;
-    color: #fff;
-    margin: 0;
-    min-height: 100vh;
-    overflow-x: hidden
-}
-
-/* Estilos para a área do jogo */
-#gameArea {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 1200px
-}
-
-/* Estilos para o canvas do jogo */
-#gameCanvas {
-    border: 2px solid #4caf50;
     background: #000;
-    box-shadow: 0 0 20px rgba(76, 175, 80, .5);
-    max-width: 100%;
-    height: auto
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
 }
 
-/* Estilos para o painel de informações */
-#infoPanel {
-    margin-top: 20px;
-    background: #2a2a2a;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, .3);
+.header, .footer {
+    text-align: center;
     width: 100%;
-    max-width: 1200px;
-    overflow-y: auto
+    padding: 10px 0;
+    font-size: 18px;
+    text-shadow: 0 0 10px #0f0;
 }
 
-/* Estilos para a visualização dos valores Q */
+.footer {
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.game-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    max-width: 1200px;
+    width: 100%;
+}
+
+canvas {
+    border: 2px solid #0f0;
+    box-shadow: 0 0 20px #0f0;
+}
+
+.info-panel {
+    background: rgba(0, 255, 0, 0.1);
+    border: 2px solid #0f0;
+    padding: 15px;
+    max-width: 500px;
+    width: 100%;
+    backdrop-filter: blur(5px);
+}
+
+h2, h3 {
+    color: #0f0;
+    text-align: center;
+    margin-top: 0;
+    text-shadow: 0 0 10px #0f0;
+}
+
+.chart-container {
+    position: relative;
+    height: 200px;
+    width: 100%;
+    margin-top: 20px;
+}
+
 #qValueVisual {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 5px;
-    margin-top: 10px
+    margin-top: 10px;
 }
 
 #qValueVisual div {
-    width: 100%;
-    aspect-ratio: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid #4caf50;
-    font-size: 10px;
-    transition: all .3s ease
-}
-
-#qValueVisual div:hover {
-    transform: scale(1.1)
-}
-
-/* Estilos para os contêineres dos gráficos */
-.chart-container {
-    position: relative;
-    height: 150px;
-    width: 100%;
-    margin-top: 20px
-}
-
-/* Estilos para cabeçalhos */
-h2,
-h3 {
-    color: #4caf50
-}
-
-/* Estilos para o botão de alternância de idioma */
-#languageToggle {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 5px 10px;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    z-index: 1000
-}
-
-/* Estilos para o cabeçalho principal */
-.header {
+    border: 1px solid #0f0;
+    padding: 5px;
     text-align: center;
-    margin-bottom: 10px;
-    font-size: 18px;
-    color: #4caf50;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 15px;
-    border-radius: 8px;
-    border: 2px solid #4caf50;
-    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+    font-size: 12px;
+}
+
+.controls {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-around;
     width: 100%;
-    max-width: 1200px;
-    font-weight: bold;
-    letter-spacing: 1px;
-    text-transform: uppercase
 }
 
-/* Estilos responsivos para telas maiores */
-@media (min-width: 1024px) {
-    #gameArea {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: flex-start
-    }
+button {
+    background: #000;
+    color: #0f0;
+    border: 2px solid #0f0;
+    padding: 10px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
 
-    #gameCanvas {
-        width: 60%;
-        max-width: 800px
-    }
+button:hover {
+    background: #0f0;
+    color: #000;
+}
 
-    #infoPanel {
-        width: 35%;
-        margin-top: 0;
-        max-height: 80vh;
-        overflow-y: auto
+#gameSpeedControl {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+#gameSpeed {
+    width: 100%;
+    margin: 0 10px;
+}
+
+@media (max-width: 768px) {
+    .game-container {
+        flex-direction: column;
+    }
+    
+    canvas {
+        width: 100% !important;
+        height: auto !important;
     }
 }
 
-/* Estilos responsivos para telas menores */
-@media (max-width: 1023px) {
-    body {
-        padding: 5px
-    }
+@keyframes glow {
+    0% { box-shadow: 0 0 5px #0f0; }
+    50% { box-shadow: 0 0 20px #0f0, 0 0 30px #0f0; }
+    100% { box-shadow: 0 0 5px #0f0; }
+}
 
-    #infoPanel {
-        padding: 10px
-    }
+canvas {
+    animation: glow 2s infinite;
+}
 
-    #qValueVisual div {
-        font-size: 8px
-    }
+#gameCanvas {
+    max-width: 100%;
+    height: auto;
+}
 
-    .header {
-        font-size: 16px
-    }
+.info-panel {
+    flex: 1;
+    min-width: 300px;
+    max-width: 500px;
+}
 
-    #gameCanvas {
-        width: 100%;
-        max-width: 600px
-    }
+.chart-container canvas {
+    max-width: 100%;
+    height: auto !important;
 }
 </style>
 </head>
-
 <body>
-<!-- Botão para alternar entre idiomas -->
-<button id="languageToggle">Mudar para PtBr</button>
 
-<!-- Cabeçalho principal -->
-<div class="header">Made with ❤️ by Daniel M</div>
+<div class="header">Made with &lt;3 by Daniel M</div>
 
-<!-- Área do jogo -->
-<div id="gameArea">
-    <!-- Canvas onde o jogo será renderizado -->
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    
-    <!-- Painel de informações -->
-    <div id="infoPanel">
-        <h2 id="aiTrainingInfo">AI Training Information</h2>
+<div class="game-container">
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div class="info-panel">
+        <h2 id="aiTrainingInfo">Info de Treinamento da IA</h2>
         <div id="performanceMetrics"></div>
+        <div class="chart-container">
+            <canvas id="winRateChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="rewardChart"></canvas>
+        </div>
         <div id="qValueVisual"></div>
-        <div class="chart-container"><canvas id="rewardChart"></canvas></div>
-        <div class="chart-container"><canvas id="epsilonChart"></canvas></div>
+        <div id="gameSpeedControl">
+            <span>Velocidade: </span>
+            <input type="range" id="gameSpeed" min="1" max="10" value="5">
+            <span id="speedValue">5x</span>
+        </div>
     </div>
 </div>
 
+<div class="controls">
+    <button id="resetBtn">Reiniciar</button>
+    <button id="toggleTrainingBtn">Pausar/Continuar Treinamento</button>
+</div>
+
+<div class="footer">&copy; 2024 Daniel Monteiro</div>
+
 <script>
-// Classe que representa o jogo Pong
 class PongGame {
-    constructor(e) {
-        // Inicializa as propriedades do jogo
-        this.canvas = e;
-        this.ctx = e.getContext("2d");
-        this.width = e.width;
-        this.height = e.height;
-        this.paddleWidth = 10;
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.width = canvas.width;
+        this.height = canvas.height;
+        this.paddleWidth = 15;
         this.paddleHeight = 80;
-        this.ballSize = 8;
+        this.ballSize = 10;
         this.reset();
-
-        // Cria um canvas para o mapa de calor
-        this.heatmapCanvas = document.createElement("canvas");
-        this.heatmapCanvas.width = this.width;
-        this.heatmapCanvas.height = this.height;
-        this.heatmapCtx = this.heatmapCanvas.getContext("2d");
-
-        // Inicializa arrays e objetos para visualizações
-        this.decisionPoints = [];
-        this.predictionLine = {
-            x: 0,
-            y: 0,
-            visible: !1
-        };
-        this.confidenceCircle = {
-            x: 0,
-            y: 0,
-            radius: 0,
-            visible: !1
-        };
-
-        // Inicializa o fator de escala e redimensiona o canvas
-        this.scaleFactor = 1;
-        this.resizeCanvas()
     }
 
-    // Método para redimensionar o canvas
-    resizeCanvas() {
-        const e = this.canvas.parentElement.clientWidth,
-            t = window.innerHeight * .8;
-        let i = Math.min(e, 800) / 800;
-        this.canvas.style.width = `${800*i}px`;
-        this.canvas.style.height = `${600*i}px`;
-        this.scaleFactor = i
-    }
-
-    // Método para reiniciar o jogo
     reset() {
-        // Reinicia as posições e pontuações dos jogadores e da bola
-        this.player = {
-            y: this.height / 2 - this.paddleHeight / 2,
-            score: 0
-        };
-        this.ai = {
-            y: this.height / 2 - this.paddleHeight / 2,
-            score: 0
-        };
+        this.player = { y: this.height / 2 - this.paddleHeight / 2 };
+        this.ai = { y: this.height / 2 - this.paddleHeight / 2 };
         this.ball = {
             x: this.width / 2,
             y: this.height / 2,
-            dx: 4 * (Math.random() > .5 ? 1 : -1),
-            dy: 4 * (Math.random() > .5 ? 1 : -1)
+            dx: 5 * (Math.random() > 0.5 ? 1 : -1),
+            dy: 5 * (Math.random() > 0.5 ? 1 : -1)
         };
-        this.decisionPoints = []
     }
 
-    // Método para atualizar o estado do jogo
     update() {
         this.moveBall();
-        this.checkCollisions()
+        this.checkCollisions();
     }
 
-    // Método para mover a bola
     moveBall() {
         this.ball.x += this.ball.dx;
-        this.ball.y += this.ball.dy
+        this.ball.y += this.ball.dy;
     }
 
-    // Método para mover a raquete da IA
-    moveAIPaddle(e) {
-        this.ai.y = Math.max(0, Math.min(this.height - this.paddleHeight, this.ai.y + e))
+    moveAIPaddle(move) {
+        this.ai.y = Math.max(0, Math.min(this.height - this.paddleHeight, this.ai.y + move));
     }
 
-    // Método para mover a raquete do jogador
-    movePlayerPaddle(e) {
-        this.player.y = Math.max(0, Math.min(this.height - this.paddleHeight, e))
+    movePlayerPaddle(y) {
+        this.player.y = Math.max(0, Math.min(this.height - this.paddleHeight, y));
     }
 
-    // Método para verificar colisões
     checkCollisions() {
-        // Verifica colisão com as bordas superior e inferior
-        (this.ball.y <= 0 || this.ball.y + this.ballSize >= this.height) && (this.ball.dy *= -1);
-
-        // Verifica colisão com as raquetes
-        this.ball.x <= this.paddleWidth && this.ball.y + this.ballSize >= this.player.y && this.ball.y <= this.player.y + this.paddleHeight ? (this.ball.dx *= -1, this.ball.dx *= 1.05) : this.ball.x + this.ballSize >= this.width - this.paddleWidth && this.ball.y + this.ballSize >= this.ai.y && this.ball.y <= this.ai.y + this.paddleHeight && (this.ball.dx *= -1, this.ball.dx *= 1.05)
-    }
-
-    // Método para desenhar o jogo
-    draw() {
-        // Limpa o canvas e desenha o fundo
-        this.ctx.fillStyle = "#000";
-        this.ctx.fillRect(0, 0, this.width, this.height);
-
-        // Desenha o mapa de calor
-        this.ctx.globalAlpha = .3;
-        this.ctx.drawImage(this.heatmapCanvas, 0, 0);
-        this.ctx.globalAlpha = 1;
-
-        // Desenha as raquetes e a bola
-        this.ctx.fillStyle = "#fff";
-        this.ctx.fillRect(0, this.player.y, this.paddleWidth, this.paddleHeight);
-        this.ctx.fillRect(this.width - this.paddleWidth, this.ai.y, this.paddleWidth, this.paddleHeight);
-        this.ctx.beginPath();
-        this.ctx.arc(this.ball.x + this.ballSize / 2, this.ball.y + this.ballSize / 2, this.ballSize / 2, 0, 2 * Math.PI);
-        this.ctx.fill();
-
-        // Desenha os pontos de decisão e visualizações da IA
-        this.drawDecisionPoints();
-        this.drawAIVisualizations();
-
-        // Desenha a pontuação
-        this.ctx.font = "24px Arial";
-        this.ctx.fillText(`Player: ${this.player.score}`, 50, 30);
-        this.ctx.fillText(`AI: ${this.ai.score}`, this.width - 120, 30)
-    }
-
-    // Método para desenhar os pontos de decisão
-    drawDecisionPoints() {
-        this.ctx.strokeStyle = "rgba(255, 255, 0, 0.5)";
-        this.ctx.lineWidth = 2;
-        this.decisionPoints.forEach(e => {
-            this.ctx.beginPath();
-            this.ctx.moveTo(e.x, e.y);
-            this.ctx.lineTo(e.x + 20 * e.dx, e.y + 20 * e.dy);
-            this.ctx.stroke()
-        })
-    }
-
-    // Método para desenhar as visualizações da IA
-    drawAIVisualizations() {
-        // Desenha a linha de previsão
-        this.predictionLine.visible && (this.ctx.strokeStyle = "rgba(0, 255, 0, 0.5)", this.ctx.lineWidth = 2, this.ctx.beginPath(), this.ctx.moveTo(this.ball.x, this.ball.y), this.ctx.lineTo(this.predictionLine.x, this.predictionLine.y), this.ctx.stroke());
-
-        // Desenha o círculo de confiança
-        this.confidenceCircle.visible && (this.ctx.strokeStyle = "rgba(255, 165, 0, 0.5)", this.ctx.lineWidth = 2, this.ctx.beginPath(), this.ctx.arc(this.confidenceCircle.x, this.confidenceCircle.y, this.confidenceCircle.radius, 0, 2 * Math.PI), this.ctx.stroke())
-    }
-
-    // Método para adicionar um ponto de decisão
-    addDecisionPoint(e, t, i) {
-        this.decisionPoints.push({
-            x: e,
-            y: t,
-            dx: i
-        });
-        this.decisionPoints.length > 5 && this.decisionPoints.shift()
-    }
-
-    // Método para verificar se o jogo acabou
-    isGameOver() {
-        return this.ball.x <= 0 || this.ball.x + this.ballSize >= this.width
-    }
-
-    // Método para obter o vencedor
-    getWinner() {
-        return this.ball.x <= 0 ? (this.ai.score++, "AI") : (this.player.score++, "Player")
-    }
-
-    // Método para atualizar o mapa de calor
-    updateHeatmap(e) {
-        this.heatmapCtx.clearRect(0, 0, this.width, this.height);
-        const t = Math.max(...Object.values(e)),
-            i = Math.min(...Object.values(e));
-        for (let s = 0; s < this.height; s += 10) {
-            const a = e[s] || 0,
-                h = 240 * (1 - (a - i) / (t - i));
-            this.heatmapCtx.fillStyle = `hsla(${h}, 100%, 50%, 0.5)`;
-            this.heatmapCtx.fillRect(this.width - this.paddleWidth, s, this.paddleWidth, 10)
+        if (this.ball.y <= 0 || this.ball.y + this.ballSize >= this.height) {
+            this.ball.dy *= -1;
+        }
+        if (this.ball.x <= this.paddleWidth && this.ball.y + this.ballSize >= this.player.y && this.ball.y <= this.player.y + this.paddleHeight) {
+            this.ball.dx *= -1.1;
+            let deltaY = (this.ball.y - (this.player.y + this.paddleHeight / 2)) / (this.paddleHeight / 2);
+            this.ball.dy = deltaY * 5;
+        } else if (this.ball.x + this.ballSize >= this.width - this.paddleWidth && this.ball.y + this.ballSize >= this.ai.y && this.ball.y <= this.ai.y + this.paddleHeight) {
+            this.ball.dx *= -1.1;
+            let deltaY = (this.ball.y - (this.ai.y + this.paddleHeight / 2)) / (this.paddleHeight / 2);
+            this.ball.dy = deltaY * 5;
         }
     }
 
-    // Método para atualizar as visualizações da IA
-    updateAIVisualizations(e, t, i) {
-        this.predictionLine.x = e;
-        this.predictionLine.y = t;
-        this.predictionLine.visible = !0;
-        this.confidenceCircle.x = this.width - this.paddleWidth;
-        this.confidenceCircle.y = this.ai.y + this.paddleHeight / 2;
-        this.confidenceCircle.radius = 20 * i;
-        this.confidenceCircle.visible = !0
+    draw() {
+        this.ctx.fillStyle = '#000';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        
+        this.ctx.strokeStyle = '#0f0';
+        this.ctx.setLineDash([10, 15]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.width / 2, 0);
+        this.ctx.lineTo(this.width / 2, this.height);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = '#0f0';
+        
+        this.ctx.fillStyle = '#0f0';
+        this.ctx.fillRect(0, this.player.y, this.paddleWidth, this.paddleHeight);
+        this.ctx.fillRect(this.width - this.paddleWidth, this.ai.y, this.paddleWidth, this.paddleHeight);
+        
+        this.ctx.beginPath();
+        this.ctx.arc(this.ball.x + this.ballSize / 2, this.ball.y + this.ballSize / 2, this.ballSize / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.shadowBlur = 0;
+    }
+
+    isGameOver() {
+        return this.ball.x <= 0 || this.ball.x + this.ballSize >= this.width;
+    }
+
+    getWinner() {
+        return this.ball.x <= 0 ? 'IA' : 'Jogador';
     }
 }
 
-// Classe que controla a IA
 class AIController {
-    constructor(e) {
-        this.game = e;
-        this.learningRate = .1;
-        this.discountFactor = .95;
+    constructor(game) {
+        this.game = game;
+        this.learningRate = 0.1;
+        this.discountFactor = 0.95;
         this.epsilon = 1;
-        this.epsilonDecay = .9995;
-        this.minEpsilon = .01;
+        this.epsilonDecay = 0.9995;
+        this.minEpsilon = 0.01;
         this.qTable = {};
-        this.actions = [-5, -3, -1, 0, 1, 3, 5];
+        this.actions = [-7, -5, -3, -1, 0, 1, 3, 5, 7];
         this.lastState = null;
         this.lastAction = null;
         this.gameCount = 0;
         this.winCount = 0;
         this.totalReward = 0;
+        this.isTraining = true;
+        this.winRateHistory = [];
         this.rewardHistory = [];
-        this.epsilonHistory = [];
-        this.frameCount = 0;
-        this.lastUpdateTime = performance.now()
     }
 
-    // Método para obter o estado atual
     getState() {
-        const e = Math.round(this.game.ball.x / 50),
-            t = Math.round(this.game.ball.y / 50),
-            i = Math.round(this.game.ai.y / 50);
-        return `${e},${t},${i}`
+        const ballX = Math.round(this.game.ball.x / 50);
+        const ballY = Math.round(this.game.ball.y / 50);
+        const paddleY = Math.round(this.game.ai.y / 50);
+        const ballDx = Math.sign(this.game.ball.dx);
+        const ballDy = Math.sign(this.game.ball.dy);
+        return `${ballX},${ballY},${paddleY},${ballDx},${ballDy}`;
     }
 
-    // Método para escolher uma ação
-    getAction(e) {
-        // Exploração aleatória com probabilidade epsilon
-        if (Math.random() < this.epsilon) return this.actions[Math.floor(Math.random() * this.actions.length)];
-
-        // Inicializa o estado na tabela Q se não existir
-        this.qTable[e] || (this.qTable[e] = {});
-        this.actions.forEach(t => {
-            this.qTable[e][t] || (this.qTable[e][t] = 0)
-        });
-
-        // Escolhe a ação com maior valor Q
-        const t = Object.entries(this.qTable[e]).reduce((e, t) => t[1] > e[1] ? t : e);
-        return Number(t[0])
+    getAction(state) {
+        if (this.isTraining && Math.random() < this.epsilon) {
+            return this.actions[Math.floor(Math.random() * this.actions.length)];
+        }
+        if (!this.qTable[state]) {
+            this.qTable[state] = {};
+            this.actions.forEach(action => this.qTable[state][action] = 0);
+        }
+        return Number(Object.entries(this.qTable[state]).reduce((best, [action, value]) => 
+            value > best[1] ? [action, value] : best
+        )[0]);
     }
 
-    // Método principal de atualização da IA
     update() {
-        const e = this.getState(),
-            t = this.getAction(e);
-        this.game.moveAIPaddle(t);
-        this.getReward();
-
-        // Atualiza a tabela Q
-        if (null !== this.lastState && null !== this.lastAction) {
-            this.qTable[this.lastState] || (this.qTable[this.lastState] = {});
-            this.qTable[this.lastState][this.lastAction] || (this.qTable[this.lastState][this.lastAction] = 0);
-            const t = this.qTable[this.lastState][this.lastAction];
-            this.qTable[e] || (this.qTable[e] = {});
-            this.actions.forEach(t => {
-                this.qTable[e][t] || (this.qTable[e][t] = 0)
-            });
-            const i = Math.max(...Object.values(this.qTable[e])),
-                s = t + this.learningRate * (this.getReward() + this.discountFactor * i - t);
-            this.qTable[this.lastState][this.lastAction] = s
+        const state = this.getState();
+        const action = this.getAction(state);
+        this.game.moveAIPaddle(action);
+        
+        if (this.lastState !== null && this.lastAction !== null && this.isTraining) {
+            const reward = this.getReward();
+            if (!this.qTable[this.lastState]) {
+                this.qTable[this.lastState] = {};
+            }
+            if (!this.qTable[this.lastState][this.lastAction]) {
+                this.qTable[this.lastState][this.lastAction] = 0;
+            }
+            const oldQ = this.qTable[this.lastState][this.lastAction];
+            if (!this.qTable[state]) {
+                this.qTable[state] = {};
+                this.actions.forEach(a => this.qTable[state][a] = 0);
+            }
+            const maxFutureQ = Math.max(...Object.values(this.qTable[state]));
+            const newQ = oldQ + this.learningRate * (reward + this.discountFactor * maxFutureQ - oldQ);
+            this.qTable[this.lastState][this.lastAction] = newQ;
+            
+            this.totalReward += reward;
         }
 
-        // Atualiza o estado e ação anteriores
-        this.lastState = e;
-        this.lastAction = t;
-        this.totalReward += this.getReward();
-        this.game.addDecisionPoint(this.game.ball.x, this.game.ball.y, t);
+        this.lastState = state;
+        this.lastAction = action;
 
-        // Atualiza as visualizações da IA
-        const i = this.predictBallPosition(),
-            s = this.getConfidence(e);
-        this.game.updateAIVisualizations(this.game.width - this.game.paddleWidth, i, s);
-
-        // Atualiza as visualizações periodicamente
-        this.frameCount++;
-        performance.now() - this.lastUpdateTime >= 1e3 && (this.updateVisualizations(), this.lastUpdateTime = performance.now());
-
-        // Verifica se o jogo acabou
         if (this.game.isGameOver()) {
-            this.game.getWinner() === "AI" && this.winCount++;
+            if (this.game.getWinner() === 'IA') {
+                this.winCount++;
+            }
             this.gameCount++;
-            this.epsilon = Math.max(this.minEpsilon, this.epsilon * this.epsilonDecay);
-            this.rewardHistory.push(this.totalReward);
-            this.epsilonHistory.push(this.epsilon);
+            if (this.isTraining) {
+                this.epsilon = Math.max(this.minEpsilon, this.epsilon * this.epsilonDecay);
+            }
+            this.updateHistories();
             this.updateVisualizations();
             this.game.reset();
             this.lastState = null;
-            this.lastAction = null
+            this.lastAction = null;
         }
     }
 
-    // Método para calcular a recompensa
     getReward() {
-        return this.game.ball.x > this.game.width / 2 ? 1 : this.game.ball.x < this.game.width / 2 ? -1 : 0
+        const paddleCenter = this.game.ai.y + this.game.paddleHeight / 2;
+        const ballY = this.game.ball.y;
+        const distanceToCenter = Math.abs(paddleCenter - ballY);
+        const maxDistance = this.game.height / 2;
+        const normalizedDistance = distanceToCenter / maxDistance;
+        return this.game.ball.x > this.game.width / 2 ? 1 - normalizedDistance : -1;
     }
 
-    // Método para prever a posição da bola
-    predictBallPosition() {
-        const e = (this.game.width - this.game.paddleWidth - this.game.ball.x) / this.game.ball.dx;
-        return this.game.ball.y + this.game.ball.dy * e
+    updateHistories() {
+        const winRate = this.gameCount > 0 ? this.winCount / this.gameCount : 0;
+        const avgReward = this.gameCount > 0 ? this.totalReward / this.gameCount : 0;
+        this.winRateHistory.push(winRate);
+        this.rewardHistory.push(avgReward);
+
+        // Manter apenas os últimos 100 pontos de dados
+        if (this.winRateHistory.length > 100) {
+            this.winRateHistory.shift();
+            this.rewardHistory.shift();
+        }
     }
 
-    // Método para calcular a confiança da IA
-    getConfidence(e) {
-        if (!this.qTable[e]) return 0;
-        const t = Object.values(this.qTable[e]);
-        return Math.max(...t) - Math.min(...t)
-    }
-
-    // Método para atualizar as visualizações
     updateVisualizations() {
         this.updatePerformanceMetrics();
-        this.updateCharts();
         this.visualizeQValues(this.getState());
-        const e = {};
-        for (let t = 0; t < this.game.height; t += 10) {
-            const i = `${Math.round(this.game.ball.x/50)},${Math.round(this.game.ball.y/50)},${Math.round(t/50)}`;
-            this.qTable[i] && (e[t] = Math.max(...Object.values(this.qTable[i])))
-        }
-        this.game.updateHeatmap(e)
+        this.updateCharts();
     }
 
-    // Método para atualizar as métricas de desempenho
     updatePerformanceMetrics() {
-        const e = document.getElementById("performanceMetrics"),
-            t = this.gameCount > 0 ? this.winCount / this.gameCount : 0,
-            i = this.gameCount > 0 ? this.totalReward / this.gameCount : 0;
-        e.innerHTML = `<h3>${currentLanguage==="en"?"Performance Metrics":"Métricas de Desempenho"}</h3>${currentLanguage==="en"?"Games Played":"Jogos Jogados"}: ${this.gameCount}<br>${currentLanguage==="en"?"Win Rate":"Taxa de Vitória"}: ${(100*t).toFixed(2)}%<br>${currentLanguage==="en"?"Avg Reward":"Recompensa Média"}: ${i.toFixed(2)}<br>${currentLanguage==="en"?"Epsilon":"Épsilon"}: ${this.epsilon.toFixed(4)}`
+        const metrics = document.getElementById('performanceMetrics');
+        const winRate = this.gameCount > 0 ? this.winCount / this.gameCount : 0;
+        const avgReward = this.gameCount > 0 ? this.totalReward / this.gameCount : 0;
+        metrics.innerHTML = `
+            <p>Jogos: ${this.gameCount}</p>
+            <p>Taxa de Vitória: ${(winRate * 100).toFixed(2)}%</p>
+            <p>Recompensa Média: ${avgReward.toFixed(2)}</p>
+            <p>Épsilon: ${this.epsilon.toFixed(4)}</p>
+        `;
     }
 
-    // Método para visualizar os valores Q
-    visualizeQValues(e) {
-        const t = document.getElementById("qValueVisual");
-        t.innerHTML = `<h3>${currentLanguage==="en"?"Q-Values for Current State":"Valores Q para o Estado Atual"}</h3>`;
-        const i = this.qTable[e] || {};
-        this.actions.forEach(e => {
-            const s = document.createElement("div"),
-                a = i[e] || 0;
-            s.style.backgroundColor = this.getColor(a);
-            s.textContent = `${e}: ${a.toFixed(2)}`;
-            t.appendChild(s)
-        })
+    visualizeQValues(state) {
+        const visual = document.getElementById('qValueVisual');
+        visual.innerHTML = `<h3>Valores Q</h3>`;
+        const qValues = this.qTable[state] || {};
+        this.actions.forEach(action => {
+            const div = document.createElement('div');
+            const qValue = qValues[action] || 0;
+            div.textContent = `${action}: ${qValue.toFixed(2)}`;
+            div.style.backgroundColor = `rgba(0, 255, 0, ${Math.abs(qValue) / 5})`;
+            visual.appendChild(div);
+        });
     }
 
-    // Método para obter a cor baseada no valor Q
-    getColor(e) {
-        const t = Math.max(-1, Math.min(1, e)),
-            i = t > 0 ? (255 - Math.round(255 * t)).toString(16).padStart(2, "0") : "ff",
-            s = t < 0 ? (255 - Math.round(255 * Math.abs(t))).toString(16).padStart(2, "0") : "ff";
-        return `#${t>0?"ff":s}${i}00`
-    }
-
-    // Método para atualizar os gráficos
     updateCharts() {
-        rewardChart.data.labels.push(this.gameCount);
-        rewardChart.data.datasets[0].data.push(this.totalReward);
-        rewardChart.data.labels.length > 50 && (rewardChart.data.labels.shift(), rewardChart.data.datasets[0].data.shift());
-        rewardChart.update();
-        epsilonChart.data.labels.push(this.gameCount);
-        epsilonChart.data.datasets[0].data.push(this.epsilon);
-        epsilonChart.data.labels.length > 50 && (epsilonChart.data.labels.shift(), epsilonChart.data.datasets[0].data.shift());
-        epsilonChart.update()
+        const winRateChart = Chart.getChart("winRateChart");
+        const rewardChart = Chart.getChart("rewardChart");
+
+        if (winRateChart) {
+            winRateChart.data.labels = Array.from({ length: this.winRateHistory.length }, (_, i) => i + 1);
+            winRateChart.data.datasets[0].data = this.winRateHistory;
+            winRateChart.update();
+        } else {
+            this.createChart("winRateChart", "Taxa de Vitória", this.winRateHistory);
+        }
+
+        if (rewardChart) {
+            rewardChart.data.labels = Array.from({ length: this.rewardHistory.length }, (_, i) => i + 1);
+            rewardChart.data.datasets[0].data = this.rewardHistory;
+            rewardChart.update();
+        } else {
+            this.createChart("rewardChart", "Recompensa Média", this.rewardHistory);
+        }
+    }
+
+    createChart(canvasId, label, data) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({ length: data.length }, (_, i) => i + 1),
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: '#0f0',
+                    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#0f0'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#0f0'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#0f0'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    toggleTraining() {
+        this.isTraining = !this.isTraining;
+        return this.isTraining;
     }
 }
 
-// Inicialização do jogo e da IA
-const canvas = document.getElementById("gameCanvas"),
-    game = new PongGame(canvas),
-    ai = new AIController(game),
-    rewardChart = new Chart(document.getElementById("rewardChart").getContext("2d"), {
-        type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Cumulative Reward",
-                data: [],
-                borderColor: "rgb(75, 192, 192)",
-                tension: .1
-            }]
-        },
-        options: {
-            responsive: !0,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    display: !1
-                }
-            }
-        }
-    }),
-    epsilonChart = new Chart(document.getElementById("epsilonChart").getContext("2d"), {
-        type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Epsilon",
-                data: [],
-                borderColor: "rgb(192, 75, 192)",
-                tension: .1
-            }]
-        },
-        options: {
-            responsive: !0,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    display: !1
-                },
-                y: {
-                    min: 0,
-                    max: 1
-                }
-            }
-        }
-    });
+const canvas = document.getElementById('gameCanvas');
+const game = new PongGame(canvas);
+const ai = new AIController(game);
 
-// Loop principal do jogo
-function gameLoop() {
-    game.update();
-    ai.update();
-    game.draw();
-    requestAnimationFrame(gameLoop)
+let lastTime = 0;
+let gameSpeed = 5;
+
+function gameLoop(timestamp) {
+    const deltaTime = timestamp - lastTime;
+    if (deltaTime >= 1000 / (60 * gameSpeed)) {
+        game.update();
+        ai.update();
+        game.draw();
+        lastTime = timestamp;
+    }
+    requestAnimationFrame(gameLoop);
 }
 
-// Função para lidar com o movimento do mouse
-function handleMouseMove(e) {
-    const t = canvas.getBoundingClientRect(),
-        i = (e.clientY - t.top) / game.scaleFactor;
-    game.movePlayerPaddle(i - game.paddleHeight / 2)
-}
-
-// Função para lidar com o movimento de toque
-function handleTouchMove(e) {
-    e.preventDefault();
-    const t = canvas.getBoundingClientRect(),
-        i = (e.touches[0].clientY - t.top) / game.scaleFactor;
-    game.movePlayerPaddle(i - game.paddleHeight / 2)
-}
-
-// Adiciona os event listeners
-canvas.addEventListener("mousemove", handleMouseMove);
-canvas.addEventListener("touchmove", handleTouchMove, {
-    passive: !1
-});
-canvas.addEventListener("touchstart", e => {
-    e.preventDefault()
-}, {
-    passive: !1
-});
-window.addEventListener("resize", () => {
-    game.resizeCanvas()
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    game.movePlayerPaddle(y - game.paddleHeight / 2);
 });
 
-// Função para ajustar o layout para dispositivos móveis
-function checkMobileAndAdjustLayout() {
-    const e = window.matchMedia("(max-width: 1023px)").matches,
-        t = document.getElementById("gameArea"),
-        i = document.getElementById("gameCanvas"),
-        s = document.getElementById("infoPanel");
-    e ? (t.style.flexDirection = "column", i.style.width = "100%", i.style.maxWidth = "600px", s.style.width = "100%", s.style.marginTop = "20px", s.style.maxHeight = "none") : (t.style.flexDirection = "row", i.style.width = "60%", i.style.maxWidth = "800px", s.style.width = "35%", s.style.marginTop = "0", s.style.maxHeight = "80vh")
+document.getElementById('resetBtn').addEventListener('click', () => {
+    game.reset();
+    ai.gameCount = 0;
+    ai.winCount = 0;
+    ai.totalReward = 0;
+    ai.epsilon = 1;
+    ai.winRateHistory = [];
+    ai.rewardHistory = [];
+    ai.updateVisualizations();
+});
+
+document.getElementById('toggleTrainingBtn').addEventListener('click', () => {
+    const isTraining = ai.toggleTraining();
+    document.getElementById('toggleTrainingBtn').textContent = isTraining ? 'Pausar Treinamento' : 'Continuar Treinamento';
+});
+
+document.getElementById('gameSpeed').addEventListener('input', (e) => {
+    gameSpeed = parseInt(e.target.value);
+    document.getElementById('speedValue').textContent = `${gameSpeed}x`;
+});
+
+// Função para ajustar o tamanho do canvas
+function resizeCanvas() {
+    const gameContainer = document.querySelector('.game-container');
+    const infoPanel = document.querySelector('.info-panel');
+    const containerWidth = gameContainer.offsetWidth;
+    const maxCanvasWidth = containerWidth - infoPanel.offsetWidth - 20; // 20 é o gap
+
+    if (window.innerWidth <= 768) {
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+    } else {
+        const aspectRatio = canvas.width / canvas.height;
+        const newWidth = Math.min(maxCanvasWidth, canvas.width);
+        const newHeight = newWidth / aspectRatio;
+        canvas.style.width = `${newWidth}px`;
+        canvas.style.height = `${newHeight}px`;
+    }
 }
 
-// Adiciona os event listeners para ajuste de layout
-window.addEventListener("load", checkMobileAndAdjustLayout);
-window.addEventListener("resize", checkMobileAndAdjustLayout);
+// Chamar a função de redimensionamento inicialmente e quando a janela for redimensionada
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-// Inicia o loop do jogo
 gameLoop();
-
-// Variáveis e funções para alternância de idioma
-let currentLanguage = "en";
-const languageToggle = document.getElementById("languageToggle"),
-    aiTrainingInfo = document.getElementById("aiTrainingInfo");
-
-function switchLanguage() {
-    currentLanguage = "en" === currentLanguage ? "pt" : "en";
-    "en" === currentLanguage ? (languageToggle.textContent = "Mudar para PtBr", aiTrainingInfo.textContent = "AI Training Information") : (languageToggle.textContent = "Change to EnUS", aiTrainingInfo.textContent = "Informações de Treinamento da IA");
-    ai.updatePerformanceMetrics()
-}
-
-// Adiciona o event listener para alternância de idioma
-languageToggle.addEventListener("click", switchLanguage);
 </script>
-</body>
-</html>
+
+</body></html>
